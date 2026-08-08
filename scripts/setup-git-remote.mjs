@@ -48,7 +48,15 @@ const git = (...args) =>
 
 const gitSilencioso = (...args) => {
   try {
-    return { ok: true, out: git(...args) };
+    // stdio: el stderr se captura en vez de imprimirse. Varios de estos
+    // chequeos FALLAN a proposito (que .env.git no este trackeado, que todavia
+    // no haya remoto), y verlos en pantalla como "error:" asusta sin motivo.
+    const out = execFileSync("git", args, {
+      cwd: RAIZ,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { ok: true, out: out.trim() };
   } catch (e) {
     return { ok: false, out: (e.stderr || e.stdout || e.message).toString() };
   }
