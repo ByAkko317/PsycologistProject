@@ -13,7 +13,8 @@
     "seed:airtable": "node scripts/seed-airtable.mjs",
     "audit:flujo": "node scripts/audit-flujo.mjs",
     "mock:mercadopago": "node scripts/mock-mercadopago.mjs",
-    "dev:sandbox": "node scripts/sandbox.mjs"
+    "dev:sandbox": "node scripts/sandbox.mjs",
+    "crear:usuario": "node scripts/crear-usuario.mjs"
   },
   "dependencies": {
     "next": "14.2.15",

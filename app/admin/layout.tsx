@@ -2,6 +2,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BrandStyle } from "@/components/brand";
+import { LogoutButton } from "@/components/auth-forms";
+import { requirePageSession } from "@/lib/auth/guards";
 import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
@@ -17,18 +19,22 @@ const SECCIONES = [
   { href: "/admin/marca", label: "Marca" },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Solo el duenio. Un profesional que entre aca cae en /sin-permiso.
+  const sesion = requirePageSession(["owner"], "/admin");
   const tenant = await requireTenant();
 
   return (
     <>
       <BrandStyle tenant={tenant} />
       <div className="flex min-h-screen flex-col md:flex-row">
-        <aside className="border-b bg-white md:w-60 md:shrink-0 md:border-b-0 md:border-r">
+        <aside className="flex flex-col border-b bg-white md:w-60 md:shrink-0 md:border-b-0 md:border-r">
           <div className="flex items-center gap-2 px-6 py-5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-xs font-bold text-brand-fg">
               {tenant.name.slice(0, 2).toUpperCase()}
@@ -56,6 +62,11 @@ export default async function AdminLayout({
               Vista del empleado →
             </Link>
           </nav>
+
+          <div className="border-t px-6 py-4 md:mt-auto">
+            <p className="truncate text-xs text-slate-500">{sesion.email}</p>
+            <LogoutButton className="mt-1 text-xs text-slate-500 hover:text-slate-900" />
+          </div>
         </aside>
 
         <main className="flex-1 px-6 py-8">

@@ -4,11 +4,15 @@
 // la edicion funciona incluso sin JavaScript en el cliente.
 
 import { revalidatePath } from "next/cache";
+import { requireActionSession } from "@/lib/auth/guards";
 import { db } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
 import type { WeeklyHours } from "@/lib/types";
 
 export async function guardarServicio(formData: FormData) {
+  // Una server action es un endpoint POST publico: sin esto, cualquiera que
+  // conozca su id puede cambiar precios sin pasar por el panel.
+  requireActionSession(["owner"]);
   const tenant = await requireTenant();
 
   const id = String(formData.get("id") ?? "") || undefined;
@@ -36,6 +40,7 @@ export async function guardarServicio(formData: FormData) {
 }
 
 export async function guardarMarca(formData: FormData) {
+  requireActionSession(["owner"]);
   const tenant = await requireTenant();
 
   const businessHours: WeeklyHours = {};

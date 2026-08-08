@@ -29,7 +29,15 @@ pnpm audit:flujo --no-n8n
 | 8 | Eventos hacia n8n | Por cada webhook configurado: acepta la firma válida **y rechaza la alterada** |
 | 9 | Recordatorio 24hs | Modelo PULL (`/api/n8n/bookings`, con y sin token) y modelo PUSH (`/api/cron/reminders`) |
 | 10 | Cancelar / reprogramar | `/portal` abre con el token y rechaza horarios inválidos |
-| 11 | Asistencia y dashboard | `/employee/agenda` y `/admin` responden; `PATCH /api/bookings/:id` marca asistencia |
+| 11 | Asistencia y dashboard | Sin sesión, `/admin` y `/employee` rebotan al login |
+| 11.1 | — | Con una sesión válida de dueño, ambos responden 200 |
+| 11.2 | — | Un paciente que entra a `/admin` va a `/sin-permiso` |
+| 11.3 | — | `PATCH /api/bookings/:id` da 401 sin sesión y 200 con sesión |
+| 11.4 | — | Una cookie con la firma alterada no abre nada |
+
+Los pasos 11.1 a 11.4 necesitan `AUTH_SECRET` en `.env.local`: la auditoría
+emite cookies de sesión con ese mismo secreto para probar las rutas privadas de
+verdad, no solo comprobar que rebotan. Sin `AUTH_SECRET` quedan `OMITIDO`.
 
 ## Cómo leer el resultado
 

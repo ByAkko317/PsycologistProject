@@ -44,6 +44,21 @@ const TENANT = opt("--tenant", process.env.NEXT_PUBLIC_DEFAULT_TENANT || "demo")
 const PROBAR_N8N = !flag("--no-n8n");
 const CONSERVAR = flag("--keep");
 const SECRET = process.env.N8N_WEBHOOK_SECRET || "";
+const AUTH_SECRET = process.env.AUTH_SECRET || "";
+
+/**
+ * Emite una cookie de sesion valida, con el mismo formato que lib/auth/session.
+ * Permite auditar las rutas privadas de verdad, no solo comprobar que rebotan.
+ * Requiere AUTH_SECRET; si no esta, los pasos de auth quedan OMITIDOS.
+ */
+function cookieDeSesion(datos) {
+  if (!AUTH_SECRET) return null;
+  const ahora = Math.floor(Date.now() / 1000);
+  const payload = { ...datos, iat: ahora, exp: ahora + 3600 };
+  const cuerpo = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const firma = createHmac("sha256", AUTH_SECRET).update(cuerpo).digest("base64url");
+  return `turnos_session=${cuerpo}.${firma}`;
+}
 
 // --- reporte -----------------------------------------------------------------
 const resultados = [];
@@ -69,9 +84,17 @@ async function json(path, init) {
   return { status: res.status, ok: res.ok, body };
 }
 
-async function html(path) {
-  const res = await fetch(`${BASE}${path}`);
-  return { status: res.status, ok: res.ok, text: await res.text() };
+async function html(path, cookie) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: cookie ? { Cookie: cookie } : {},
+    redirect: "manual",
+  });
+  return {
+    status: res.status,
+    ok: res.status === 200,
+    location: res.headers.get("location") ?? "",
+    text: res.status === 200 ? await res.text() : "",
+  };
 }
 
 // --- pasos -------------------------------------------------------------------
@@ -346,21 +369,70 @@ async function auditar() {
     anotar(10, "Portal de autogestión", OMITIDO, "no se creó el turno de prueba");
   }
 
-  // --- Paso 11: agenda del empleado ---
-  const agenda = await html("/employee/agenda");
-  const admin = await html("/admin");
-  anotar(11, "Agenda del empleado y panel del dueño",
-    agenda.ok && admin.ok ? OK : FALLA,
-    `employee ${agenda.status} · admin ${admin.status}`);
+  // --- Paso 11: agenda del empleado y panel, ya con autenticación ---
+  const tenantId = catalogo.body?.tenant?.id ?? "";
 
-  if (bookingId) {
-    const asistencia = await json(`/api/bookings/${bookingId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "completed", tenant: TENANT }),
-    });
-    anotar(11.1, "Marcado de asistencia", asistencia.ok ? OK : FALLA,
-      `HTTP ${asistencia.status}`);
+  const cookieOwner = cookieDeSesion({
+    uid: "audit-owner", tenantId, role: "owner",
+    email: "auditoria@turnos.test", name: "Auditoría",
+  });
+  const cookieCliente = cookieDeSesion({
+    uid: "audit-client", tenantId, role: "client",
+    email: "auditoria@turnos.test", name: "Auditoría", clientId: "audit-no-existe",
+  });
+
+  // Sin sesión, las rutas privadas tienen que rebotar al login.
+  const adminAnon = await html("/admin");
+  const employeeAnon = await html("/employee/agenda");
+  const rebota = (r) => r.status >= 300 && r.status < 400 && r.location.includes("/login");
+
+  anotar(11, "Rutas privadas cerradas sin sesión",
+    rebota(adminAnon) && rebota(employeeAnon) ? OK : FALLA,
+    `admin ${adminAnon.status} · employee ${employeeAnon.status}`);
+
+  if (!AUTH_SECRET) {
+    anotar(11.1, "Panel y agenda con sesión válida", OMITIDO,
+      "AUTH_SECRET vacío: no se pueden emitir sesiones de prueba");
+    anotar(11.2, "Marcado de asistencia", OMITIDO, "requiere sesión");
+  } else {
+    const adminOwner = await html("/admin", cookieOwner);
+    const agendaOwner = await html("/employee/agenda", cookieOwner);
+    anotar(11.1, "Panel y agenda con sesión válida",
+      adminOwner.ok && agendaOwner.ok ? OK : FALLA,
+      `admin ${adminOwner.status} · employee ${agendaOwner.status}`);
+
+    // Un paciente no puede entrar al panel del dueño.
+    const adminCliente = await html("/admin", cookieCliente);
+    const bloqueado =
+      adminCliente.status >= 300 &&
+      adminCliente.status < 400 &&
+      adminCliente.location.includes("/sin-permiso");
+    anotar(11.2, "Paciente bloqueado en /admin",
+      bloqueado ? OK : FALLA,
+      `HTTP ${adminCliente.status} → ${adminCliente.location || "sin redirect"}`);
+
+    if (bookingId) {
+      const sinSesion = await json(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      });
+      const conSesion = await json(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Cookie: cookieOwner },
+        body: JSON.stringify({ status: "completed" }),
+      });
+      anotar(11.3, "Marcado de asistencia (401 sin sesión, 200 con)",
+        sinSesion.status === 401 && conSesion.ok ? OK : FALLA,
+        `sin sesión ${sinSesion.status} · con sesión ${conSesion.status}`);
+    }
+
+    // Cookie con firma alterada: no debe abrir nada.
+    const falsa = cookieOwner.slice(0, -4) + "AAAA";
+    const conFalsa = await html("/admin", falsa);
+    anotar(11.4, "Cookie de sesión falsificada rechazada",
+      rebota(conFalsa) ? OK : FALLA,
+      `HTTP ${conFalsa.status} → ${conFalsa.location || "entró!"}`);
   }
 
   // --- limpieza ---

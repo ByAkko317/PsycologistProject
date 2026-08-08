@@ -3,7 +3,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BrandHeader, BrandStyle } from "@/components/brand";
 import { AttendanceControls } from "@/components/attendance-controls";
+import { LogoutButton } from "@/components/auth-forms";
 import { Card, EmptyState, PaymentBadge, StatusBadge } from "@/components/ui";
+import { requirePageSession } from "@/lib/auth/guards";
 import { db, expandBookings } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
 import { toDateKey, toTimeLabel } from "@/lib/utils/dates";
@@ -20,12 +22,17 @@ export default async function EmployeeAgenda({
 }: {
   searchParams: { profesional?: string; fecha?: string };
 }) {
+  const sesion = requirePageSession(["employee", "owner"], "/employee/agenda");
   const tenant = await requireTenant();
   const profesionales = await db.listProfessionals(tenant.id);
 
-  const activo =
-    profesionales.find((p) => p.id === searchParams.profesional) ??
-    profesionales[0];
+  // El duenio puede mirar la agenda de cualquiera; el profesional, solo la
+  // suya. El ?profesional= de la URL se ignora para el rol employee.
+  const puedeElegir = sesion.role === "owner";
+  const activo = puedeElegir
+    ? (profesionales.find((p) => p.id === searchParams.profesional) ??
+      profesionales[0])
+    : (profesionales.find((p) => p.id === sesion.professionalId) ?? null);
 
   const hoyKey = toDateKey(new Date(), tenant.timezone);
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.fecha ?? "")
@@ -61,20 +68,31 @@ export default async function EmployeeAgenda({
       <BrandHeader tenant={tenant} subtitle="Agenda del profesional" />
 
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-8">
-        <div className="flex flex-wrap gap-2">
-          {profesionales.map((p) => (
-            <Link
-              key={p.id}
-              href={link({ profesional: p.id, fecha })}
-              className={`rounded-full border px-3 py-1 text-sm transition ${
-                activo?.id === p.id
-                  ? "border-brand bg-brand text-brand-fg"
-                  : "bg-white hover:border-brand"
-              }`}
-            >
-              {p.name}
-            </Link>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {puedeElegir ? (
+            <div className="flex flex-wrap gap-2">
+              {profesionales.map((p) => (
+                <Link
+                  key={p.id}
+                  href={link({ profesional: p.id, fecha })}
+                  className={`rounded-full border px-3 py-1 text-sm transition ${
+                    activo?.id === p.id
+                      ? "border-brand bg-brand text-brand-fg"
+                      : "bg-white hover:border-brand"
+                  }`}
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-medium">{sesion.name}</p>
+          )}
+
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="truncate">{sesion.email}</span>
+            <LogoutButton className="text-xs text-slate-500 hover:text-slate-900" />
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -121,7 +139,11 @@ export default async function EmployeeAgenda({
         )}
 
         {!activo ? (
-          <EmptyState>No hay profesionales cargados.</EmptyState>
+          <EmptyState>
+            {puedeElegir
+              ? "No hay profesionales cargados."
+              : "Tu usuario todavía no está vinculado a una ficha de profesional. Pedile a la administración que lo asocie."}
+          </EmptyState>
         ) : detalles.length === 0 ? (
           <EmptyState>
             {activo.name} no tiene turnos ese día.

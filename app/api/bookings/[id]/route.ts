@@ -1,6 +1,8 @@
 // PATCH /api/bookings/:id — paso 11: el empleado marca el resultado del turno.
 import { NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth/guards";
 import { BookingError, setAttendance } from "@/lib/services/bookings";
+import { db } from "@/lib/services/db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Antes esto era publico: cualquiera podia marcar turnos como "asistio".
+  const sesion = requireApiSession(["owner", "employee"]);
+  if (sesion instanceof NextResponse) return sesion;
+
   let body: { status?: string; tenant?: string };
   try {
     body = await request.json();
@@ -27,7 +33,21 @@ export async function PATCH(
   }
 
   try {
-    const booking = await setAttendance(body.tenant ?? "", params.id, status);
+    // Un profesional solo toca SUS turnos; el duenio, cualquiera del tenant.
+    if (sesion.role === "employee") {
+      const booking = await db.getBooking(sesion.tenantId, params.id);
+      if (!booking) {
+        return NextResponse.json({ error: "Turno inexistente" }, { status: 404 });
+      }
+      if (booking.professionalId !== sesion.professionalId) {
+        return NextResponse.json(
+          { error: "Ese turno no es de tu agenda", code: "FORBIDDEN" },
+          { status: 403 }
+        );
+      }
+    }
+
+    const booking = await setAttendance(sesion.tenantId, params.id, status);
     return NextResponse.json({ id: booking.id, status: booking.status });
   } catch (error) {
     if (error instanceof BookingError) {

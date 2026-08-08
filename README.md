@@ -24,12 +24,17 @@ Abrí <http://localhost:3000>. **Funciona sin configurar ninguna cuenta**: si
 faltan credenciales, la app cae automáticamente al proveedor `mock` con datos
 de ejemplo y se puede navegar el flujo completo.
 
-| Ruta | Quién la usa |
-|---|---|
-| `/book` | Cliente — reservar en 4 pasos |
-| `/portal?token=…` | Cliente — cancelar o reprogramar |
-| `/employee/agenda` | Profesional — su día y marcado de asistencia |
-| `/admin` | Dueño — resumen, agenda, clientes, servicios, marca |
+| Ruta | Quién la usa | Requiere sesión |
+|---|---|---|
+| `/book` | Paciente — reservar en 4 pasos | no |
+| `/portal?token=…` | Paciente — gestionar el turno del link del mensaje | no |
+| `/portal` | Paciente — todos sus turnos | sí (paciente) |
+| `/registro` · `/login` | Alta e ingreso | — |
+| `/employee/agenda` | Profesional — su día y marcado de asistencia | sí (profesional) |
+| `/admin` | Dueño — resumen, agenda, clientes, servicios, marca | sí (dueño) |
+
+Con el proveedor `mock`, la pantalla de login lista las cuentas de prueba
+(contraseña `demo1234` para todas).
 
 ### Entorno de prueba completo
 
@@ -126,7 +131,12 @@ lib/
   types.ts              modelo de dominio
   config.ts             lectura centralizada de variables de entorno
   tenant.ts             resolución del tenant activo y helpers de marca
+  auth/
+    passwords.ts        hash y verificación scrypt
+    session.ts          cookie firmada, sin estado en el servidor
+    guards.ts           requireSession para páginas, APIs y server actions
   services/
+    auth.ts             login, registro y alta de usuarios del equipo
     db.ts               punto ÚNICO de acceso a datos
     db.airtable.ts      implementación Airtable (REST, sin SDK)
     db.mock.ts          datos de ejemplo en memoria
@@ -143,6 +153,7 @@ n8n/                    andamiaje para el colaborador (ver n8n/README.md)
 scripts/
   only-pnpm.mjs         guard: bloquea npm install y yarn install
   setup-git-remote.mjs  conecta el repo con GitHub sin exponer el token
+  crear-usuario.mjs     alta de duenio o profesional desde la terminal
   seed-airtable.mjs     carga de datos de ejemplo
   audit-flujo.mjs       auditoría de los 11 pasos del flujo
   mock-mercadopago.mjs  simulador de la pasarela de pago
@@ -167,6 +178,7 @@ n8n. Cambiar la redacción de una confirmación no requiere deployar.
 
 | Integración | Variable | Si falta |
 |---|---|---|
+| Sesiones | `AUTH_SECRET` | en dev genera uno efímero; en prod **no arranca** |
 | Airtable | `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` | cae a `mock` |
 | Mercado Pago | `MERCADOPAGO_ACCESS_TOKEN` | el turno queda pendiente de pago |
 | n8n | `N8N_WEBHOOK_*`, `N8N_WEBHOOK_SECRET` | el evento se loguea y se sigue |
@@ -226,6 +238,7 @@ Eventos emitidos:
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
 | `pnpm seed:airtable` | carga datos de ejemplo en Airtable |
+| `pnpm crear:usuario` | crea un usuario dueño o profesional |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
 | `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
 | `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
@@ -267,11 +280,46 @@ git push -u origin feature/nombre-de-lo-que-hacés
 
 ---
 
+## Autenticación y permisos
+
+Sesión propia sobre Airtable: hash **scrypt** de la contraseña y **cookie
+firmada con HMAC-SHA256**, `httpOnly` y `sameSite=lax`. Sin dependencias
+externas ni cuentas nuevas.
+
+| Rol | Ve | No puede |
+|---|---|---|
+| `owner` | todo el tenant: agenda completa, clientes, servicios, marca, y la agenda de cualquier profesional | — |
+| `employee` | **solo su propia agenda** y sus turnos | entrar a `/admin`, tocar turnos de otro profesional |
+| `client` | **solo sus turnos** | ver datos de otro paciente, entrar a `/admin` o `/employee` |
+
+Detalles que importan:
+
+- **El filtro sale siempre de la sesión, nunca de la URL.** Un profesional que
+  ponga `?profesional=otro` sigue viendo la suya; un paciente que mande el
+  `bookingId` de otro recibe un 404.
+- **404, no 403, cuando el recurso es de otro.** Un 403 confirmaría que ese
+  turno existe.
+- **El link del mensaje sigue funcionando sin login.** `/portal?token=…` da
+  acceso a *ese* turno y nada más — es lo que hace que el WhatsApp que manda
+  n8n siga sirviendo.
+- **Los mensajes de error del login son deliberadamente vagos** y el tiempo de
+  respuesta es constante exista o no el email. Distinguir "ese email no existe"
+  de "la contraseña está mal" permitiría averiguar quién es paciente del
+  consultorio.
+- **No hay registro público de `owner` ni `employee`.** Se crean con
+  `pnpm crear:usuario`, que pide la contraseña por consola para que no quede en
+  el historial de la terminal.
+
+`AUTH_SECRET` es obligatorio en producción: sin él la app no arranca. En
+desarrollo genera uno efímero y avisa.
+
+---
+
 ## Qué falta
 
-- [ ] **Autenticación.** `/admin` y `/employee` no tienen login todavía. No
-      deployar públicamente sin resolverlo — hoy cualquiera con la URL entra.
-      El plan es Firebase Authentication (Email/Password), como indica el PDF.
+- [ ] **Recuperar contraseña** por email (vía n8n).
+- [ ] **ABM de usuarios desde el panel** — hoy los crea `pnpm crear:usuario`.
+- [ ] **Rate limiting** en `/login` y en la creación de turnos.
 - [ ] **Proveedor Firebase** (`lib/services/db.firebase.ts`).
 - [ ] **Nodos reales de WhatsApp y email** dentro de n8n.
 - [ ] Reintentos con backoff para eventos de n8n que fallan.

@@ -12,10 +12,12 @@ import type {
   BookingFilters,
   Client,
   CreateBookingInput,
+  CreateUserInput,
   Professional,
   Service,
   Tenant,
   UpdateBookingInput,
+  User,
 } from "@/lib/types";
 
 export interface DataClient {
@@ -62,6 +64,18 @@ export interface DataClient {
     bookingId: string,
     patch: UpdateBookingInput
   ): Promise<Booking>;
+
+  // --- Usuarios y autenticacion ---
+  /** Busca por email dentro del tenant. Devuelve el User COMPLETO (con hash). */
+  getUserByEmail(tenantId: string, email: string): Promise<User | null>;
+  getUserById(tenantId: string, userId: string): Promise<User | null>;
+  listUsers(tenantId: string): Promise<User[]>;
+  createUser(tenantId: string, input: CreateUserInput): Promise<User>;
+  updateUser(
+    tenantId: string,
+    userId: string,
+    patch: Partial<Omit<User, "id" | "tenantId">>
+  ): Promise<User>;
 
   // --- Disponibilidad ---
   getAvailability(args: {

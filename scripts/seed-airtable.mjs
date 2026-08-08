@@ -214,6 +214,10 @@ async function main() {
   }
 
   console.log("\nListo. Poné en .env.local:  NEXT_PUBLIC_DEFAULT_TENANT=demo");
+  console.log(
+    "\nFalta el primer usuario para poder entrar al panel:\n" +
+      "  pnpm crear:usuario --email admin@tu-consultorio.test --rol owner\n"
+  );
 }
 
 main().catch((err) => {

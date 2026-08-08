@@ -216,12 +216,24 @@ async function findBookingAnyTenant(bookingId: string): Promise<Booking | null> 
   return null;
 }
 
+/**
+ * Como se identifica un turno para gestionarlo.
+ *
+ *   { token }               -> el link opaco que llega en el mensaje. Sirve sin
+ *                              login y da acceso a ESE turno unicamente.
+ *   { bookingId, clientId } -> paciente con sesion. Se verifica que el turno
+ *                              sea suyo antes de tocarlo.
+ */
+export type BookingAccess =
+  | { token: string }
+  | { bookingId: string; clientId: string };
+
 /** Paso 10: cancelar respetando la politica del negocio. */
 export async function cancelBooking(
-  token: string,
+  acceso: BookingAccess,
   reason?: string
 ): Promise<BookingDetail> {
-  const { tenant, booking } = await loadByToken(token);
+  const { tenant, booking } = await loadBooking(acceso);
 
   if (booking.status === "cancelled") {
     throw new BookingError("El turno ya estaba cancelado", "ALREADY_CANCELLED");
@@ -241,10 +253,10 @@ export async function cancelBooking(
 
 /** Paso 10: reprogramar a un horario nuevo del mismo profesional. */
 export async function rescheduleBooking(
-  token: string,
+  acceso: BookingAccess,
   newStartsAt: string
 ): Promise<BookingDetail> {
-  const { tenant, booking } = await loadByToken(token);
+  const { tenant, booking } = await loadBooking(acceso);
 
   if (booking.status === "cancelled") {
     throw new BookingError(
@@ -302,10 +314,26 @@ export function calcDeposit(price: number, depositPercent: number): number {
   return Math.round((price * Math.min(depositPercent, 100)) / 100);
 }
 
-async function loadByToken(token: string) {
-  if (!token?.trim()) throw new BookingError("Falta el token", "INVALID");
+async function loadBooking(acceso: BookingAccess) {
+  let booking: Booking | null;
 
-  const booking = await db.getBookingByToken(token.trim());
+  if ("token" in acceso) {
+    if (!acceso.token?.trim()) {
+      throw new BookingError("Falta el token", "INVALID");
+    }
+    booking = await db.getBookingByToken(acceso.token.trim());
+  } else {
+    // Con sesion de paciente hay que resolver el tenant antes de leer el turno.
+    const tenantActual = await requireTenant();
+    booking = await db.getBooking(tenantActual.id, acceso.bookingId);
+
+    // Clave del aislamiento: un paciente no puede tocar el turno de otro,
+    // aunque adivine el id.
+    if (booking && booking.clientId !== acceso.clientId) {
+      throw new BookingError("Turno inexistente", "NOT_FOUND", 404);
+    }
+  }
+
   if (!booking) throw new BookingError("Turno inexistente", "NOT_FOUND", 404);
 
   const tenant = await db.getTenant(booking.tenantId);

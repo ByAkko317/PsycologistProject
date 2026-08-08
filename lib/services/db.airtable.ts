@@ -14,6 +14,7 @@ import type {
   Professional,
   Service,
   Tenant,
+  User,
   WeeklyHours,
 } from "@/lib/types";
 import { computeAvailability, isSlotStillFree } from "@/lib/utils/availability";
@@ -197,6 +198,23 @@ function toClient(r: AirtableRecord): Client {
     phone: str(f.phone) || undefined,
     notes: str(f.notes) || undefined,
     createdAt: str(f.createdAt, r.createdTime),
+  };
+}
+
+function toUser(r: AirtableRecord): User {
+  const f = r.fields;
+  return {
+    id: r.id,
+    tenantId: str(f.tenantId),
+    email: str(f.email).toLowerCase(),
+    name: str(f.name, "Usuario"),
+    role: (str(f.role, "client") as User["role"]) ?? "client",
+    passwordHash: str(f.passwordHash),
+    active: bool(f.active, true),
+    professionalId: str(f.professionalId) || undefined,
+    clientId: str(f.clientId) || undefined,
+    createdAt: str(f.createdAt, r.createdTime),
+    lastLoginAt: str(f.lastLoginAt) || undefined,
   };
 }
 
@@ -484,6 +502,73 @@ export const airtableClient: DataClient = {
       (k) => fields[k] === undefined && delete fields[k]
     );
     return toBooking(await updateRecord(T.bookings, bookingId, fields));
+  },
+
+  async getUserByEmail(tenantId, email) {
+    const id = await requireTenantId(tenantId);
+    const buscado = email.trim().toLowerCase();
+
+    const records = await listAll(T.users, {
+      filterByFormula: andFormula(
+        eqFormula("tenantId", id),
+        `LOWER({email}) = ${q(buscado)}`
+      ),
+      maxRecords: "1",
+    });
+    return records[0] ? toUser(records[0]) : null;
+  },
+
+  async getUserById(tenantId, userId) {
+    const id = await requireTenantId(tenantId);
+    try {
+      const record = await request<AirtableRecord>(
+        `${encodeURIComponent(T.users)}/${userId}`
+      );
+      const user = toUser(record);
+      return user.tenantId === id ? user : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async listUsers(tenantId) {
+    const id = await requireTenantId(tenantId);
+    return (
+      await listAll(T.users, { filterByFormula: eqFormula("tenantId", id) })
+    ).map(toUser);
+  },
+
+  async createUser(tenantId, input) {
+    const id = await requireTenantId(tenantId);
+    const email = input.email.trim().toLowerCase();
+
+    // Airtable no tiene constraint de unicidad: se chequea antes.
+    const existente = await airtableClient.getUserByEmail(id, email);
+    if (existente) throw new Error("EMAIL_TAKEN");
+
+    return toUser(
+      await createRecord(T.users, {
+        tenantId: id,
+        email,
+        name: input.name,
+        role: input.role,
+        passwordHash: input.passwordHash,
+        active: input.active ?? true,
+        professionalId: input.professionalId ?? "",
+        clientId: input.clientId ?? "",
+        createdAt: new Date().toISOString(),
+      })
+    );
+  },
+
+  async updateUser(tenantId, userId, patch) {
+    const fields: Fields = { ...patch };
+    delete (fields as Record<string, unknown>).id;
+    delete (fields as Record<string, unknown>).tenantId;
+    Object.keys(fields).forEach(
+      (k) => fields[k] === undefined && delete fields[k]
+    );
+    return toUser(await updateRecord(T.users, userId, fields));
   },
 
   async getAvailability({ tenantId, serviceId, professionalId, dateKey }) {

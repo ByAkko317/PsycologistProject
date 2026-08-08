@@ -9,7 +9,10 @@ import { useRouter } from "next/navigation";
 import type { AvailabilitySlot } from "@/lib/types";
 
 interface Props {
-  token: string;
+  /** Acceso por link del mensaje. Excluyente con bookingId. */
+  token?: string;
+  /** Acceso con sesion de paciente. El servidor verifica que el turno sea suyo. */
+  bookingId?: string;
   tenantSlug: string;
   serviceId: string;
   professionalId: string;
@@ -23,6 +26,7 @@ type Modo = "menu" | "cancelar" | "reprogramar";
 
 export function PortalActions({
   token,
+  bookingId,
   tenantSlug,
   serviceId,
   professionalId,
@@ -69,6 +73,10 @@ export function PortalActions({
     if (modo === "reprogramar" && dateKey) void cargarSlots(dateKey);
   }, [modo, dateKey, cargarSlots]);
 
+  // Se manda uno u otro, nunca el bookingId solo: sin token, el servidor exige
+  // sesion y comprueba que el turno pertenezca a quien lo pide.
+  const identificador = () => (token ? { token } : { bookingId });
+
   if (!puedeGestionar) {
     return (
       <div className="rounded-xl border border-dashed bg-white p-5 text-sm text-slate-600">
@@ -86,7 +94,10 @@ export function PortalActions({
       const res = await fetch("/api/portal/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, reason: motivo || undefined }),
+        body: JSON.stringify({
+          ...identificador(),
+          reason: motivo || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo cancelar");
@@ -107,7 +118,7 @@ export function PortalActions({
       const res = await fetch("/api/portal/reschedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, startsAt }),
+        body: JSON.stringify({ ...identificador(), startsAt }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo reprogramar");

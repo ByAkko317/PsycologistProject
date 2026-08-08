@@ -76,6 +76,49 @@ export interface Client {
   createdAt: string;
 }
 
+/**
+ * Roles del sistema.
+ *   owner    — duenio del negocio: ve y edita todo el tenant
+ *   employee — profesional: solo SU agenda y sus turnos
+ *   client   — paciente: solo SUS turnos
+ */
+export type UserRole = "owner" | "employee" | "client";
+
+export interface User {
+  id: string;
+  tenantId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  /** Hash scrypt. Nunca sale de la capa de datos hacia la UI. */
+  passwordHash: string;
+  active: boolean;
+  /** Solo para role=employee: a que profesional corresponde. */
+  professionalId?: string;
+  /** Solo para role=client: a que registro de Clients corresponde. */
+  clientId?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+/** User sin el hash, que es lo unico que puede viajar a un componente. */
+export type SafeUser = Omit<User, "passwordHash">;
+
+export function toSafeUser(user: User): SafeUser {
+  const { passwordHash, ...resto } = user;
+  return resto;
+}
+
+export interface CreateUserInput {
+  email: string;
+  name: string;
+  role: UserRole;
+  passwordHash: string;
+  professionalId?: string;
+  clientId?: string;
+  active?: boolean;
+}
+
 export type BookingStatus =
   | "pending_payment"
   | "confirmed"

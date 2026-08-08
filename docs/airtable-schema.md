@@ -1,6 +1,6 @@
 # Esquema de Airtable
 
-El proveedor `db.airtable.ts` espera **5 tablas** dentro de un mismo Base.
+El proveedor `db.airtable.ts` espera **6 tablas** dentro de un mismo Base.
 Los nombres de tabla se pueden cambiar desde `.env.local`
 (`AIRTABLE_TABLE_*`), pero **los nombres de columna deben coincidir
 exactamente** con los de abajo (Airtable distingue mayusculas).
@@ -113,6 +113,49 @@ Un dia ausente significa **cerrado**.
 > `startsAt` y `endsAt` van como **texto**, no como campo Date de Airtable.
 > Airtable normaliza los Date a UTC y pierde el offset del tenant, lo que rompe
 > el calculo de disponibilidad en zonas con horario de verano.
+
+---
+
+## 6. `Users`
+
+Login de duenio, profesional y paciente.
+
+| Columna | Tipo Airtable | Notas |
+|---|---|---|
+| `tenantId` | Single line text | |
+| `email` | Email | Clave de login. Unico dentro del tenant |
+| `name` | Single line text | |
+| `role` | Single select | `owner`, `employee`, `client` |
+| `passwordHash` | Single line text | Hash scrypt. **Nunca** la contrasenia en claro |
+| `active` | Checkbox | Desmarcado = no puede entrar |
+| `professionalId` | Single line text | Solo `employee`: record ID de `Professionals` |
+| `clientId` | Single line text | Solo `client`: record ID de `Clients` |
+| `createdAt` | Single line text | ISO 8601 |
+| `lastLoginAt` | Single line text | ISO 8601, lo escribe la app |
+
+> **Restringí los permisos de esta tabla en Airtable.** El `passwordHash` no
+> permite recuperar la contrasenia, pero un colaborador con acceso de escritura
+> puede reemplazarlo por uno propio y entrar como duenio.
+
+### Crear el primer usuario
+
+No hay registro publico para `owner` ni `employee` — si lo hubiera, cualquiera
+se daria de alta como administrador. Se crean desde la terminal:
+
+```bash
+pnpm crear:usuario --email admin@consultorio.test --rol owner --nombre "Nombre"
+
+# un profesional va vinculado a su ficha de Professionals
+pnpm crear:usuario --email ana@consultorio.test --rol employee \
+  --profesional recXXXXXXXXXXXXXX --nombre "Lic. Ana Torres"
+```
+
+La contrasenia se pide por consola, no por argumento: asi no queda en el
+historial de la terminal.
+
+Los pacientes se registran solos en `/registro`. Si ya habian reservado con ese
+email, la cuenta se enlaza al registro existente de `Clients` y ven su historial
+completo.
 
 ---
 

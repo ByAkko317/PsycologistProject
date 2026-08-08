@@ -16,6 +16,7 @@ import type {
   Service,
   Tenant,
   UpdateBookingInput,
+  User,
   WeeklyHours,
 } from "@/lib/types";
 import { computeAvailability, isSlotStillFree } from "@/lib/utils/availability";
@@ -37,6 +38,7 @@ interface Store {
   professionals: Professional[];
   clients: Client[];
   bookings: Booking[];
+  users: User[];
 }
 
 function seed(): Store {
@@ -196,7 +198,55 @@ function seed(): Store {
     });
   });
 
-  return { tenants, services, professionals, clients, bookings };
+  // Usuarios demo. El hash corresponde a la contrasenia "demo1234" y se
+  // genera al vuelo la primera vez que alguien intenta entrar (ver
+  // asegurarUsuariosDemo): no se hardcodea un hash en el repo.
+  const users: User[] = [];
+
+  return { tenants, services, professionals, clients, bookings, users };
+}
+
+/**
+ * Crea los usuarios de demostracion la primera vez que se los necesita.
+ *
+ * Solo corre con el proveedor mock. Las contrasenias son publicas a proposito:
+ * es un entorno de demostracion sin datos reales.
+ *
+ *   admin@demo.test     / demo1234   -> duenio
+ *   ana@demo.test       / demo1234   -> profesional (Lic. Ana Torres)
+ *   martin@demo.test    / demo1234   -> profesional (Lic. Martin Ruiz)
+ *   sofia@ejemplo.test  / demo1234   -> paciente (con turnos ya cargados)
+ */
+let usuariosDemoListos = false;
+
+export async function asegurarUsuariosDemo(): Promise<void> {
+  if (usuariosDemoListos || store.users.length > 0) {
+    usuariosDemoListos = true;
+    return;
+  }
+  usuariosDemoListos = true;
+
+  const { hashPassword } = await import("@/lib/auth/passwords");
+  const hash = await hashPassword("demo1234");
+  const tenantId = store.tenants[0]?.id ?? "tenant_demo";
+  const ahora = new Date().toISOString();
+
+  const definiciones: Array<Omit<User, "id" | "passwordHash" | "createdAt">> = [
+    { tenantId, email: "admin@demo.test", name: "Duenio Demo", role: "owner", active: true },
+    { tenantId, email: "ana@demo.test", name: "Lic. Ana Torres", role: "employee", active: true, professionalId: "prof_1" },
+    { tenantId, email: "martin@demo.test", name: "Lic. Martin Ruiz", role: "employee", active: true, professionalId: "prof_2" },
+    { tenantId, email: "sofia@ejemplo.test", name: "Sofia Ramirez", role: "client", active: true, clientId: "cli_1" },
+    { tenantId, email: "diego@ejemplo.test", name: "Diego Fernandez", role: "client", active: true, clientId: "cli_2" },
+  ];
+
+  for (const def of definiciones) {
+    store.users.push({
+      ...def,
+      id: uid("usr"),
+      passwordHash: hash,
+      createdAt: ahora,
+    });
+  }
 }
 
 // Sobrevive al hot reload de Next en desarrollo.
@@ -411,6 +461,66 @@ export const mockClient: DataClient = {
     if (!booking) throw new Error(`Turno no encontrado: ${bookingId}`);
     Object.assign(booking, patch, { updatedAt: new Date().toISOString() });
     return booking;
+  },
+
+  async getUserByEmail(tenantId, email) {
+    const tenant = requireTenant(tenantId);
+    await asegurarUsuariosDemo();
+    const buscado = email.trim().toLowerCase();
+    return (
+      store.users.find(
+        (u) => u.tenantId === tenant.id && u.email.toLowerCase() === buscado
+      ) ?? null
+    );
+  },
+
+  async getUserById(tenantId, userId) {
+    const tenant = requireTenant(tenantId);
+    await asegurarUsuariosDemo();
+    return (
+      store.users.find((u) => u.id === userId && u.tenantId === tenant.id) ?? null
+    );
+  },
+
+  async listUsers(tenantId) {
+    const tenant = requireTenant(tenantId);
+    await asegurarUsuariosDemo();
+    return store.users.filter((u) => u.tenantId === tenant.id);
+  },
+
+  async createUser(tenantId, input) {
+    const tenant = requireTenant(tenantId);
+    await asegurarUsuariosDemo();
+
+    const email = input.email.trim().toLowerCase();
+    if (store.users.some((u) => u.tenantId === tenant.id && u.email.toLowerCase() === email)) {
+      throw new Error("EMAIL_TAKEN");
+    }
+
+    const creado: User = {
+      id: uid("usr"),
+      tenantId: tenant.id,
+      email,
+      name: input.name,
+      role: input.role,
+      passwordHash: input.passwordHash,
+      active: input.active ?? true,
+      professionalId: input.professionalId,
+      clientId: input.clientId,
+      createdAt: new Date().toISOString(),
+    };
+    store.users.push(creado);
+    return creado;
+  },
+
+  async updateUser(tenantId, userId, patch) {
+    const tenant = requireTenant(tenantId);
+    const usuario = store.users.find(
+      (u) => u.id === userId && u.tenantId === tenant.id
+    );
+    if (!usuario) throw new Error(`Usuario no encontrado: ${userId}`);
+    Object.assign(usuario, patch);
+    return usuario;
   },
 
   async getAvailability({ tenantId, serviceId, professionalId, dateKey }) {

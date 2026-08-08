@@ -44,5 +44,10 @@ export const firebaseClient: DataClient = {
   getBookingByToken: async () => pendiente("getBookingByToken"),
   createBooking: async () => pendiente("createBooking"),
   updateBooking: async () => pendiente("updateBooking"),
+  getUserByEmail: async () => pendiente("getUserByEmail"),
+  getUserById: async () => pendiente("getUserById"),
+  listUsers: async () => pendiente("listUsers"),
+  createUser: async () => pendiente("createUser"),
+  updateUser: async () => pendiente("updateUser"),
   getAvailability: async () => pendiente("getAvailability"),
 };

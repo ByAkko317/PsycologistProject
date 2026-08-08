@@ -43,6 +43,7 @@ export const config = {
       professionals: env("AIRTABLE_TABLE_PROFESSIONALS", "Professionals"),
       clients: env("AIRTABLE_TABLE_CLIENTS", "Clients"),
       bookings: env("AIRTABLE_TABLE_BOOKINGS", "Bookings"),
+      users: env("AIRTABLE_TABLE_USERS", "Users"),
     },
   },
 
