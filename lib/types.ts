@@ -112,6 +112,8 @@ export interface Booking {
   updatedAt: string;
   cancelledAt?: string;
   cancellationReason?: string;
+  /** Se completa cuando n8n ya mando el recordatorio de 24hs. Evita duplicados. */
+  reminderSentAt?: string;
 }
 
 /** Un turno con sus entidades relacionadas ya resueltas, para mostrar en UI. */
@@ -158,6 +160,7 @@ export type UpdateBookingInput = Partial<
     | "professionalId"
     | "cancelledAt"
     | "cancellationReason"
+    | "reminderSentAt"
   >
 >;
 

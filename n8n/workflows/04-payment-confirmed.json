@@ -1,0 +1,130 @@
+{
+  "name": "Turnos · payment.confirmed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turnos-payment-confirmed",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-turnos-payment-confirmed",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        300
+      ],
+      "webhookId": "turnos-turnos-payment-confirmed",
+      "notes": "URL a copiar en .env.local del proyecto Next.js"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
+      },
+      "id": "validar-firma",
+      "name": "Validar firma",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json.data;\nconst texto =\n  'Listo ' + d.client.name + ', recibimos tu pago de $' + d.payment.amount + '. ' +\n  'Tu turno del ' + d.display.date + ' a las ' + d.display.time + ' quedo confirmado.\\n\\n' +\n  d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Pago confirmado — ' + d.business.name,\n  texto,\n  original: $json,\n} }];"
+      },
+      "id": "armar-mensaje",
+      "name": "Armar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-enviar-comprobante",
+      "name": "Enviar comprobante",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        560,
+        300
+      ],
+      "notes": "REEMPLAZAR por WhatsApp/email. Opcional: generar PDF del comprobante",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+      },
+      "id": "responder",
+      "name": "Responder a la app",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar firma": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar comprobante",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar comprobante": {
+      "main": [
+        [
+          {
+            "node": "Responder a la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

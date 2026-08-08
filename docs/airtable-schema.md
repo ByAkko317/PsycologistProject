@@ -108,6 +108,7 @@ Un dia ausente significa **cerrado**.
 | `updatedAt` | Single line text | ISO 8601 |
 | `cancelledAt` | Single line text | ISO 8601, opcional |
 | `cancellationReason` | Long text | Opcional |
+| `reminderSentAt` | Single line text | ISO 8601. Lo escribe n8n al mandar el recordatorio de 24hs |
 
 > `startsAt` y `endsAt` van como **texto**, no como campo Date de Airtable.
 > Airtable normaliza los Date a UTC y pierde el offset del tenant, lo que rompe

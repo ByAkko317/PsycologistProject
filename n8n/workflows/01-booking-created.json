@@ -1,0 +1,245 @@
+{
+  "name": "Turnos · booking.created",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turnos-booking-created",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-turnos-booking-created",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        300
+      ],
+      "webhookId": "turnos-turnos-booking-created",
+      "notes": "URL a copiar en .env.local del proyecto Next.js"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
+      },
+      "id": "validar-firma",
+      "name": "Validar firma",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma el texto de confirmacion. Editalo libremente.\nconst d = $json.data;\nconst pagoPendiente = d.payment?.required && d.booking.paymentStatus !== 'paid';\n\nconst texto =\n  'Hola ' + d.client.name + '! Tu turno en ' + d.business.name + ' quedo reservado.\\n\\n' +\n  '📅 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n' +\n  (pagoPendiente\n    ? '\\n⚠️ Falta abonar la sena de $' + d.payment.depositAmount + ':\\n' + d.payment.checkoutUrl + '\\n'\n    : '') +\n  '\\nSi necesitas cancelar o reprogramar (hasta ' + d.business.cancellationHours + 'hs antes):\\n' +\n  d.links.manage;\n\nreturn [{\n  json: {\n    para_whatsapp: d.client.phone,\n    para_email: d.client.email,\n    asunto: 'Turno confirmado en ' + d.business.name,\n    texto,\n    // Datos crudos por si el nodo de envio los necesita\n    original: $json,\n  },\n}];"
+      },
+      "id": "armar-mensaje",
+      "name": "Armar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-para_whatsapp",
+              "leftValue": "={{ $json.para_whatsapp }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tiene-para_whatsapp",
+      "name": "¿Tiene WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        560,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        560,
+        60
+      ],
+      "notes": "REEMPLAZAR por el nodo de WhatsApp Business API o Twilio. Campo del mensaje: {{ $json.texto }} · destinatario: {{ $json.para_whatsapp }}",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-para_email",
+              "leftValue": "={{ $json.para_email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tiene-email",
+      "name": "¿Tiene email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        560,
+        420
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-enviar-email",
+      "name": "Enviar email",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        800,
+        540
+      ],
+      "notes": "REEMPLAZAR por el nodo Send Email / Gmail / SendGrid. Asunto: {{ $json.asunto }} · cuerpo: {{ $json.texto }}",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+      },
+      "id": "responder",
+      "name": "Responder a la app",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar firma": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje": {
+      "main": [
+        [
+          {
+            "node": "¿Tiene WhatsApp?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "¿Tiene email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Tiene WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Tiene email?": {
+      "main": [
+        [
+          {
+            "node": "Enviar email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Responder a la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar email": {
+      "main": [
+        [
+          {
+            "node": "Responder a la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

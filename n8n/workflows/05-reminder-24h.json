@@ -1,0 +1,203 @@
+{
+  "name": "Turnos · recordatorio 24hs",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "cron",
+      "name": "Cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -120,
+        300
+      ],
+      "notes": "Corre cada hora y pregunta que turnos arrancan dentro de ~24hs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.TURNOS_APP_URL }}/api/n8n/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "tenant",
+              "value": "={{ $env.TURNOS_TENANT_SLUG || \"demo\" }}"
+            },
+            {
+              "name": "window",
+              "value": "24h"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TURNOS_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "traer-turnos",
+      "name": "Traer turnos de mañana",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        300
+      ],
+      "notes": "GET /api/n8n/bookings?window=24h — devuelve solo los que todavia no tienen recordatorio enviado"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "bookings",
+        "options": {}
+      },
+      "id": "separar",
+      "name": "Un item por turno",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nconst texto =\n  'Hola ' + d.client.name + '! Te recordamos tu turno de mañana en ' + d.business.name + '.\\n\\n' +\n  '📅 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n\\n' +\n  'Si no podes venir, avisanos desde acá: ' + d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Recordatorio de tu turno de mañana',\n  bookingId: d.booking.id,\n  texto,\n} }];"
+      },
+      "id": "armar-mensaje",
+      "name": "Armar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-enviar-recordatorio",
+      "name": "Enviar recordatorio",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ],
+      "notes": "REEMPLAZAR por WhatsApp/email. Texto: {{ $json.texto }}",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TURNOS_APP_URL }}/api/n8n/bookings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "bookingId",
+              "value": "={{ $json.bookingId }}"
+            },
+            {
+              "name": "action",
+              "value": "reminder_sent"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TURNOS_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "marcar-enviado",
+      "name": "Marcar recordatorio enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        300
+      ],
+      "notes": "Evita mandar el mismo recordatorio dos veces si el Cron corre de nuevo"
+    }
+  ],
+  "connections": {
+    "Cada hora": {
+      "main": [
+        [
+          {
+            "node": "Traer turnos de mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traer turnos de mañana": {
+      "main": [
+        [
+          {
+            "node": "Un item por turno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un item por turno": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Marcar recordatorio enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

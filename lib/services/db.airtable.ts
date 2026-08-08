@@ -224,6 +224,7 @@ function toBooking(r: AirtableRecord): Booking {
     updatedAt: str(f.updatedAt, r.createdTime),
     cancelledAt: str(f.cancelledAt) || undefined,
     cancellationReason: str(f.cancellationReason) || undefined,
+    reminderSentAt: str(f.reminderSentAt) || undefined,
   };
 }
 

@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "seed:airtable": "node scripts/seed-airtable.mjs"
+    "seed:airtable": "node scripts/seed-airtable.mjs",
+    "audit:flujo": "node scripts/audit-flujo.mjs"
   },
   "dependencies": {
     "next": "14.2.15",
