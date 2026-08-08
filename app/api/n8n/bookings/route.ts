@@ -1,9 +1,10 @@
 // =============================================================================
 // Endpoint que consume n8n (modelo PULL del recordatorio de 24hs).
 //
-//   GET  /api/n8n/bookings?tenant=demo&window=24h
-//        -> turnos que arrancan dentro de ~24hs y todavia no fueron avisados,
-//           con el payload ya armado (mismo contrato que los eventos salientes).
+//   GET  /api/n8n/bookings?tenant=demo&window=24h&minLead=2h
+//        -> turnos que arrancan dentro de las proximas 24hs (pero no antes de
+//           2hs) y todavia no fueron avisados, con el payload ya armado
+//           (mismo contrato que los eventos salientes).
 //
 //   POST /api/n8n/bookings   { "bookingId": "...", "action": "reminder_sent" }
 //        -> marca el turno como avisado para no duplicar el mensaje.
@@ -35,15 +36,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Tenant inexistente" }, { status: 404 });
   }
 
-  const window = searchParams.get("window") ?? "24h";
-  const horas = Number(window.replace(/h$/i, "")) || 24;
+  // window   = cuanta anticipacion mirar hacia adelante (default 24hs)
+  // minLead  = piso: no avisar de algo que empieza demasiado pronto
+  const horas = Number((searchParams.get("window") ?? "24h").replace(/h$/i, "")) || 24;
+  const minLead =
+    Number((searchParams.get("minLead") ?? "2h").replace(/h$/i, "")) || 2;
 
-  const pendientes = await findDueReminders(tenant, horas);
+  const pendientes = await findDueReminders(tenant, horas, minLead);
 
   return NextResponse.json({
     tenantId: tenant.id,
     tenantSlug: tenant.slug,
     window: `${horas}h`,
+    minLead: `${minLead}h`,
     count: pendientes.length,
     bookings: pendientes.map(bookingPayload),
   });

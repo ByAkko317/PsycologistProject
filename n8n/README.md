@@ -216,7 +216,7 @@ El Cron vive dentro de n8n:
 
 ```
 Schedule (cada hora)
-  → GET  {{TURNOS_APP_URL}}/api/n8n/bookings?tenant=demo&window=24h
+  → GET  {{TURNOS_APP_URL}}/api/n8n/bookings?tenant=demo&window=24h&minLead=2h
   → un item por turno
   → armar mensaje → enviar
   → POST {{TURNOS_APP_URL}}/api/n8n/bookings  {bookingId, action:"reminder_sent"}
@@ -244,8 +244,14 @@ nodo Webhook → `Validar firma` → armar mensaje → enviar. No necesitás el
 **Ventaja:** un solo patrón para los 5 eventos; n8n no necesita credenciales de
 la app.
 
-**Ventana:** ±1 hora alrededor de las 24hs. Con el cron corriendo cada hora,
-cada turno cae exactamente una vez en la ventana.
+**Ventana:** de anticipación, no centrada. Un turno es elegible desde que entra
+en las próximas 24hs y sigue siéndolo hasta que efectivamente se avisa; el campo
+`reminderSentAt` garantiza que se mande una sola vez. Así, si el cron pierde una
+corrida el recordatorio igual sale en la siguiente.
+
+`minLead` (default 2hs) evita mandar un "recordatorio" de algo que empieza en 20
+minutos. Se puede ajustar por query string:
+`/api/n8n/bookings?window=24h&minLead=3h`.
 
 ---
 

@@ -58,7 +58,8 @@ que descubra la URL del webhook podría mandarle mensajes a los pacientes.
   armado no le manda WhatsApp a nadie real. El `client.email` es
   `auditoria@turnos.test`, un dominio que no existe.
 - El modelo PUSH del recordatorio marca `reminderSentAt` en los turnos que
-  estén dentro de la ventana de 24hs. Si estás auditando **producción**, tenelo
+  estén dentro de la ventana de anticipación de 24hs. Si estás auditando
+  **producción**, tenelo
   en cuenta: esos turnos no van a recibir un segundo recordatorio.
 
 > Para auditar sin ningún efecto sobre datos reales, apuntá a una instancia con
