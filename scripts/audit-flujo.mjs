@@ -2,10 +2,10 @@
 /**
  * Auditoría del flujo completo descripto en Turnos-Flujo-Integraciones-Git.pdf.
  *
- *   npm run audit:flujo                    # contra http://localhost:3000
- *   npm run audit:flujo -- --url https://… # contra el deploy
- *   npm run audit:flujo -- --no-n8n        # saltea las pruebas contra n8n
- *   npm run audit:flujo -- --keep          # no cancela el turno de prueba
+ *   pnpm audit:flujo                    # contra http://localhost:3000
+ *   pnpm audit:flujo --url https://… # contra el deploy
+ *   pnpm audit:flujo --no-n8n        # saltea las pruebas contra n8n
+ *   pnpm audit:flujo --keep          # no cancela el turno de prueba
  *
  * Recorre los 11 pasos, uno por uno, y reporta cuáles quedaron cubiertos de
  * punta a punta. Los pasos que dependen de una cuenta externa se marcan como
@@ -85,7 +85,7 @@ async function auditar() {
     if (!raiz.ok) throw new Error(`HTTP ${raiz.status}`);
   } catch (e) {
     console.error(
-      `\n  No se pudo conectar con ${BASE}\n  ¿Está levantado el servidor? (npm run dev)\n  ${e.message}\n`
+      `\n  No se pudo conectar con ${BASE}\n  ¿Está levantado el servidor? (pnpm dev)\n  ${e.message}\n`
     );
     process.exit(1);
   }

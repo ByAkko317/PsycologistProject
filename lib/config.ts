@@ -50,8 +50,24 @@ export const config = {
     accessToken: env("MERCADOPAGO_ACCESS_TOKEN"),
     publicKey: env("NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY"),
     webhookSecret: env("MERCADOPAGO_WEBHOOK_SECRET"),
+    /**
+     * Base de la API. Se cambia solo para apuntar al simulador local
+     * (scripts/mock-mercadopago.mjs) y poder probar el cobro sin cuenta.
+     */
+    apiBase: env("MERCADOPAGO_API_BASE", "https://api.mercadopago.com").replace(
+      /\/$/,
+      ""
+    ),
     get enabled() {
       return Boolean(env("MERCADOPAGO_ACCESS_TOKEN"));
+    },
+    /** True si las credenciales son de prueba (sandbox). */
+    get isSandbox() {
+      const token = env("MERCADOPAGO_ACCESS_TOKEN");
+      return (
+        token.startsWith("TEST-") ||
+        Boolean(env("MERCADOPAGO_API_BASE"))
+      );
     },
   },
 

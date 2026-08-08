@@ -9,6 +9,7 @@ import {
   createPaymentPreference,
   getPayment,
   isPaymentEnabled,
+  isSandbox,
 } from "@/lib/services/mercadopago";
 import { bookingPayload, emitEvent } from "@/lib/services/n8n";
 import { requireTenant } from "@/lib/tenant";
@@ -122,8 +123,11 @@ export async function createBooking(
         payerEmail: input.client.email,
         payerName: input.client.name,
       });
-      // En sandbox el init_point productivo no funciona; se usa el de prueba.
-      checkoutUrl = pref.sandboxInitPoint || pref.initPoint;
+      // Con credenciales TEST- hay que mandar al checkout de prueba; con
+      // credenciales productivas, al real. Mezclarlos da "Algo salio mal".
+      checkoutUrl = isSandbox()
+        ? pref.sandboxInitPoint || pref.initPoint
+        : pref.initPoint || pref.sandboxInitPoint;
       await db.updateBooking(tenant.id, booking.id, { paymentId: pref.id });
     } catch (error) {
       // Un fallo de Mercado Pago no debe perder la reserva: queda pendiente y

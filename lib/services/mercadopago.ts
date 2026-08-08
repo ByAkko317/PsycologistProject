@@ -12,8 +12,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { config } from "@/lib/config";
 import type { Booking, Service, Tenant } from "@/lib/types";
 
-const API = "https://api.mercadopago.com";
-
 export interface PaymentPreference {
   id: string;
   /** URL del checkout productivo. */
@@ -36,8 +34,16 @@ export function isPaymentEnabled(): boolean {
   return config.mercadopago.enabled;
 }
 
+/**
+ * True si estamos en sandbox: credenciales TEST- o simulador local.
+ * Se usa para elegir el init_point correcto y para avisar en el panel.
+ */
+export function isSandbox(): boolean {
+  return config.mercadopago.isSandbox;
+}
+
 async function mpFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${config.mercadopago.apiBase}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${config.mercadopago.accessToken}`,

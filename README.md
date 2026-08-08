@@ -14,9 +14,10 @@ cancelación, sobre la misma instalación.
 ## Arranque rápido
 
 ```bash
-npm install
+corepack enable            # una sola vez por computadora
+pnpm install
 cp .env.example .env.local
-npm run dev
+pnpm dev
 ```
 
 Abrí <http://localhost:3000>. **Funciona sin configurar ninguna cuenta**: si
@@ -30,9 +31,44 @@ de ejemplo y se puede navegar el flujo completo.
 | `/employee/agenda` | Profesional — su día y marcado de asistencia |
 | `/admin` | Dueño — resumen, agenda, clientes, servicios, marca |
 
+### Entorno de prueba completo
+
+```bash
+pnpm dev:sandbox
+```
+
+Levanta la app junto a un **Mercado Pago simulado** y un **n8n simulado**, para
+recorrer el flujo de cobro de punta a punta sin ninguna cuenta y sin exponer
+nada a internet. Detalle en [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
+
 ### Requisitos
 
-Node.js 18 o superior (`node -v`). Nada más.
+Node.js 18 o superior (`node -v`). Nada más: **pnpm viene con Node** a través de
+corepack, no hay que instalarlo aparte.
+
+```bash
+corepack enable
+pnpm -v      # debería imprimir 9.15.4
+```
+
+`package.json` fija la versión exacta en `packageManager`, así que corepack baja
+esa y no otra.
+
+#### Por qué pnpm y no npm
+
+| | Qué cambia |
+|---|---|
+| **`node_modules` aislado** | Un paquete solo puede importar lo que declara. Con el árbol plano de npm, cualquier dependencia transitiva es alcanzable desde cualquier lado — y también explotable |
+| **Scripts de instalación bloqueados** | `pnpm.onlyBuiltDependencies` está en `[]`: ninguna dependencia puede ejecutar `postinstall`. Es el vector de supply chain más usado |
+| **Un solo gestor** | El hook `preinstall` rechaza `npm install` y `yarn install`. Dos lockfiles conviviendo significa que el árbol que auditaste no es el que se deploya |
+| **Integridad verificada** | `verify-store-integrity=true` chequea el hash de cada paquete antes de usarlo |
+
+La configuración vive en [`.npmrc`](.npmrc), con un comentario por línea
+explicando qué hace cada opción.
+
+> Si alguna dependencia futura realmente necesita compilar algo nativo, hay que
+> agregarla **a propósito** a `pnpm.onlyBuiltDependencies` en `package.json` y
+> correr `pnpm rebuild`. Que sea una decisión explícita es el punto.
 
 ---
 
@@ -61,7 +97,7 @@ NEXT_PUBLIC_DATA_PROVIDER=airtable   # airtable | firebase | mock
 4. Cargar los datos de ejemplo:
 
 ```bash
-npm run seed:airtable
+pnpm seed:airtable
 ```
 
 Es idempotente: correrlo dos veces no duplica registros.
@@ -104,8 +140,15 @@ lib/
     availability.ts     cruce de horario laboral con turnos ocupados
 
 n8n/                    andamiaje para el colaborador (ver n8n/README.md)
-scripts/                seed de Airtable y auditoría del flujo
-docs/                   esquema de datos, auditoría y los PDFs de referencia
+scripts/
+  only-pnpm.mjs         guard: bloquea npm install y yarn install
+  setup-git-remote.mjs  conecta el repo con GitHub sin exponer el token
+  seed-airtable.mjs     carga de datos de ejemplo
+  audit-flujo.mjs       auditoría de los 11 pasos del flujo
+  mock-mercadopago.mjs  simulador de la pasarela de pago
+  mock-n8n.mjs          receptor de eventos que valida la firma
+  sandbox.mjs           levanta los tres procesos juntos
+docs/                   esquema de datos, entorno de prueba, GitHub, auditoría
 ```
 
 ### Dos reglas que sostienen todo lo demás
@@ -131,9 +174,23 @@ n8n. Cambiar la redacción de una confirmación no requiere deployar.
 Ninguna integración faltante rompe una reserva. Es deliberado: el sistema tiene
 que poder tomar turnos aunque WhatsApp o la pasarela estén caídos.
 
+### Mercado Pago
+
+Tres formas de probar el cobro, de menos a más fiel:
+
+| | Cómo | Cuándo |
+|---|---|---|
+| **Simulador local** | `pnpm dev:sandbox` | desarrollo diario. Sin cuenta, sin ngrok |
+| **Sandbox oficial** | credenciales `TEST-` + ngrok | antes de deployar |
+| **Producción** | credenciales `APP_USR-` | plata real |
+
+La app detecta el prefijo del Access Token y manda al checkout que corresponde.
+Paso a paso de las tres: [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
+
 ### Webhooks entrantes y URL pública
 
-Mercado Pago y n8n necesitan poder llamar de vuelta a la app. En local:
+Mercado Pago y n8n necesitan poder llamar de vuelta a la app. Con el simulador
+esto no hace falta; contra el sandbox oficial sí:
 
 ```bash
 ngrok http 3000
@@ -164,14 +221,22 @@ Eventos emitidos:
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | servidor de desarrollo |
-| `npm run build` | build de producción |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
-| `npm run seed:airtable` | carga datos de ejemplo en Airtable |
-| `npm run audit:flujo` | audita los 11 pasos del flujo de punta a punta |
+| `pnpm dev` | servidor de desarrollo |
+| `pnpm build` | build de producción |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` | ESLint |
+| `pnpm seed:airtable` | carga datos de ejemplo en Airtable |
+| `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
+| `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
+| `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
 
-La auditoría se documenta en [`docs/auditoria.md`](docs/auditoria.md).
+Documentación por tema:
+
+- [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md) — simulador de pagos y sandbox oficial de Mercado Pago
+- [`docs/airtable-schema.md`](docs/airtable-schema.md) — tablas y columnas exactas
+- [`docs/github.md`](docs/github.md) — conectar el repo y qué token hace falta
+- [`docs/auditoria.md`](docs/auditoria.md) — qué verifica `pnpm audit:flujo`
+- [`n8n/README.md`](n8n/README.md) — guía completa para el colaborador
 
 ---
 
@@ -193,7 +258,12 @@ git push -u origin feature/nombre-de-lo-que-hacés
 - El único punto de contacto es `.env.example`. Si agregás una variable,
   documentala ahí con un comentario que explique de dónde se saca.
 - Nunca commitear `.env.local`. El `.gitignore` ya lo bloquea, junto con
-  `n8n/**/credentials*.json`.
+  `.env.git` y `n8n/**/credentials*.json`.
+- Si agregás o subís una dependencia, commiteá **`pnpm-lock.yaml` en el mismo
+  commit**. Un lockfile desactualizado hace que cada uno instale un árbol
+  distinto.
+- Cómo conectar el repo y qué credenciales hace falta pedirle a GitHub:
+  [`docs/github.md`](docs/github.md).
 
 ---
 
