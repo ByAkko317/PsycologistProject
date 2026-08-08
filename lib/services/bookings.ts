@@ -5,6 +5,11 @@
 // =============================================================================
 
 import { db, getBookingDetail } from "@/lib/services/db";
+import {
+  createPaymentPreference,
+  getPayment,
+  isPaymentEnabled,
+} from "@/lib/services/mercadopago";
 import { bookingPayload, emitEvent } from "@/lib/services/n8n";
 import { requireTenant } from "@/lib/tenant";
 import type { Booking, BookingDetail, Tenant } from "@/lib/types";
@@ -105,13 +110,106 @@ export async function createBooking(
 
   const detail = await getBookingDetail(tenant.id, booking);
 
+  // Paso 5: si el servicio pide senia, se arma el checkout de Mercado Pago.
+  let checkoutUrl: string | null = null;
+  if (depositAmount > 0 && isPaymentEnabled()) {
+    try {
+      const pref = await createPaymentPreference({
+        booking,
+        service,
+        tenant,
+        amount: depositAmount,
+        payerEmail: input.client.email,
+        payerName: input.client.name,
+      });
+      // En sandbox el init_point productivo no funciona; se usa el de prueba.
+      checkoutUrl = pref.sandboxInitPoint || pref.initPoint;
+      await db.updateBooking(tenant.id, booking.id, { paymentId: pref.id });
+    } catch (error) {
+      // Un fallo de Mercado Pago no debe perder la reserva: queda pendiente y
+      // el negocio puede cobrar por otro medio.
+      console.error("[bookings] no se pudo crear la preferencia de pago", error);
+    }
+  }
+
   // Paso 8: avisamos a n8n. Si falla, el turno igual queda creado.
   await emitEvent("booking.created", tenant, {
     ...bookingPayload(detail),
-    payment: { required: depositAmount > 0, depositAmount },
+    payment: {
+      required: depositAmount > 0,
+      depositAmount,
+      checkoutUrl,
+    },
   });
 
-  return { booking, detail, checkoutUrl: null, depositAmount };
+  return { booking, detail, checkoutUrl, depositAmount };
+}
+
+/**
+ * Paso 7: Mercado Pago confirma el pago por su webhook.
+ * Idempotente: si el turno ya estaba pagado, no vuelve a emitir el evento.
+ */
+export async function confirmPayment(paymentId: string): Promise<{
+  handled: boolean;
+  reason?: string;
+  bookingId?: string;
+}> {
+  const pago = await getPayment(paymentId);
+
+  if (!pago.externalReference) {
+    return { handled: false, reason: "el pago no trae external_reference" };
+  }
+
+  const booking = await findBookingAnyTenant(pago.externalReference);
+  if (!booking) {
+    return { handled: false, reason: "turno inexistente", bookingId: pago.externalReference };
+  }
+
+  const tenant = await db.getTenant(booking.tenantId);
+  if (!tenant) return { handled: false, reason: "tenant inexistente" };
+
+  if (booking.paymentStatus === "paid") {
+    return { handled: true, reason: "ya estaba confirmado", bookingId: booking.id };
+  }
+
+  if (pago.status !== "approved") {
+    await db.updateBooking(tenant.id, booking.id, {
+      paymentId: pago.id,
+      paymentStatus:
+        pago.status === "rejected" || pago.status === "cancelled"
+          ? "failed"
+          : "pending",
+    });
+    return { handled: true, reason: `pago en estado ${pago.status}`, bookingId: booking.id };
+  }
+
+  const actualizado = await db.updateBooking(tenant.id, booking.id, {
+    status: "confirmed",
+    paymentStatus: "paid",
+    paymentId: pago.id,
+    amountPaid: pago.transactionAmount,
+  });
+
+  const detail = await getBookingDetail(tenant.id, actualizado);
+  await emitEvent("payment.confirmed", tenant, {
+    ...bookingPayload(detail),
+    payment: {
+      id: pago.id,
+      amount: pago.transactionAmount,
+      status: pago.status,
+    },
+  });
+
+  return { handled: true, bookingId: booking.id };
+}
+
+/** El webhook no sabe de que tenant es el turno: se busca en todos. */
+async function findBookingAnyTenant(bookingId: string): Promise<Booking | null> {
+  for (const tenant of await db.listTenants()) {
+    const booking = await db.getBooking(tenant.id, bookingId);
+    if (booking) return booking;
+  }
+  return null;
 }
 
 /** Paso 10: cancelar respetando la politica del negocio. */
