@@ -1,18 +1,18 @@
 # Auditoría del flujo
 
-`npm run audit:flujo` recorre los **11 pasos** de
+`pnpm audit:flujo` recorre los **11 pasos** de
 `Turnos-Flujo-Integraciones-Git.pdf` contra una instancia real de la app y
 reporta cuáles quedaron cubiertos de punta a punta.
 
 ```bash
-npm run dev                    # en otra terminal
-npm run audit:flujo
+pnpm dev                    # en otra terminal
+pnpm audit:flujo
 
 # contra el deploy
-npm run audit:flujo -- --url https://turnos.vercel.app
+pnpm audit:flujo --url https://turnos.vercel.app
 
 # sin tocar n8n (útil mientras el colaborador todavía está armando los workflows)
-npm run audit:flujo -- --no-n8n
+pnpm audit:flujo --no-n8n
 ```
 
 ## Qué verifica cada paso

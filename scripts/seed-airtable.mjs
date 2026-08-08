@@ -2,7 +2,7 @@
 /**
  * Carga inicial del Base de Airtable con datos de ejemplo.
  *
- *   npm run seed:airtable
+ *   pnpm seed:airtable
  *
  * Requiere AIRTABLE_API_KEY y AIRTABLE_BASE_ID en .env.local, y que las 5
  * tablas ya existan con las columnas de docs/airtable-schema.md.

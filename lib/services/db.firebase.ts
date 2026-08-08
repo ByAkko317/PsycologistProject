@@ -6,7 +6,7 @@
 // alcanza con completar los metodos de abajo y cambiar la variable de entorno.
 //
 // Pasos para completarlo:
-//   1. npm install firebase firebase-admin
+//   1. pnpm add firebase firebase-admin
 //   2. Inicializar el Admin SDK con FIREBASE_ADMIN_* (ver .env.example).
 //   3. Colecciones sugeridas, todas con el campo tenantId indexado:
 //        tenants / services / professionals / clients / bookings

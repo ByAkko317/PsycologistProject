@@ -4,13 +4,16 @@
   "private": true,
   "description": "Plataforma de reservas y turnos white-label (MVP)",
   "scripts": {
+    "preinstall": "node scripts/only-pnpm.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "seed:airtable": "node scripts/seed-airtable.mjs",
-    "audit:flujo": "node scripts/audit-flujo.mjs"
+    "audit:flujo": "node scripts/audit-flujo.mjs",
+    "mock:mercadopago": "node scripts/mock-mercadopago.mjs",
+    "dev:sandbox": "node scripts/sandbox.mjs"
   },
   "dependencies": {
     "next": "14.2.15",
@@ -29,6 +32,11 @@
     "typescript": "^5.5.3"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "onlyBuiltDependencies": []
   }
 }

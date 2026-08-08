@@ -276,7 +276,7 @@ fallar en `Validar firma`. Si pasa igual, la validación no está funcionando.
 
 ### Recorrer el flujo real
 
-Levantá la app (`npm run dev`), entrá a `http://localhost:3000/book` y reservá
+Levantá la app (`pnpm dev`), entrá a `http://localhost:3000/book` y reservá
 un turno. Vas a ver la ejecución aparecer en n8n al instante.
 
 Para que **Mercado Pago** pueda avisar, la app necesita URL pública:
@@ -308,7 +308,7 @@ ngrok http 3000
 Cuando subas los workflows, corremos la auditoría automática:
 
 ```bash
-npm run audit:flujo
+pnpm audit:flujo
 ```
 
 Recorre los 11 pasos del flujo del PDF y reporta cuáles quedaron cubiertos de

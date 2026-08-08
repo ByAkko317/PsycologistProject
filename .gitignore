@@ -2,6 +2,11 @@
 /node_modules
 /.pnp
 .pnp.js
+/.pnpm-store
+
+# lockfiles de otros gestores: este proyecto usa pnpm (ver .npmrc)
+package-lock.json
+yarn.lock
 
 # testing
 /coverage
@@ -28,6 +33,7 @@ yarn-error.log*
 # variables de entorno (NUNCA subir credenciales)
 .env
 .env.local
+.env.git
 .env.development.local
 .env.test.local
 .env.production.local

@@ -23,7 +23,7 @@ export async function requireTenant(slug?: string): Promise<Tenant> {
   if (!tenant) {
     throw new Error(
       `No hay ningun tenant configurado (buscado: "${slug ?? config.defaultTenant}"). ` +
-        `Si usas Airtable, corré "npm run seed:airtable" o creá un registro en la tabla Tenants.`
+        `Si usas Airtable, corré "pnpm seed:airtable" o creá un registro en la tabla Tenants.`
     );
   }
   return tenant;

@@ -2,7 +2,7 @@
 // Proveedor Airtable — implementacion concreta de DataClient sobre la REST API.
 // Sin SDK: solo fetch, para no sumar dependencias.
 // El esquema de tablas y columnas esperado esta documentado en
-// docs/airtable-schema.md (y se puede generar con `npm run seed:airtable`).
+// docs/airtable-schema.md (y se puede generar con `pnpm seed:airtable`).
 // =============================================================================
 
 import { config } from "@/lib/config";

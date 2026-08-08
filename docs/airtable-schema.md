@@ -122,7 +122,7 @@ Con `AIRTABLE_API_KEY` y `AIRTABLE_BASE_ID` en `.env.local` (y las 5 tablas ya
 creadas con las columnas de arriba):
 
 ```bash
-npm run seed:airtable
+pnpm seed:airtable
 ```
 
 Crea el tenant `demo`, 3 profesionales, 4 servicios y 2 clientes de ejemplo.
