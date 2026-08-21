@@ -1,4 +1,4 @@
-# Turnos — plataforma de reservas white-label
+# Turnos, plataforma de reservas white-label
 
 Sistema de turnos multi-tenant construido sobre **Next.js 14 (App Router) +
 TypeScript + TailwindCSS**, con **Airtable** como base de datos, **Mercado
@@ -166,7 +166,7 @@ docs/                   esquema de datos, entorno de prueba, GitHub, auditoría
 
 **1. Ningún componente importa un proveedor de datos concreto.** Todo pasa por
 `lib/services/db.ts`. Migrar de Airtable a Firestore es completar
-`db.firebase.ts` y cambiar una variable de entorno — cero cambios de UI.
+`db.firebase.ts` y cambiar una variable de entorno (cero cambios de UI).
 
 **2. La app no arma mensajes.** Solo emite eventos con todos los datos que un
 mensaje podría necesitar. El texto, el canal y el momento se deciden dentro de
