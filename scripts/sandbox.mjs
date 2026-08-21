@@ -22,8 +22,36 @@
  */
 
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+
+const RAIZ = process.cwd();
+const require = createRequire(import.meta.url);
+
+/**
+ * Ruta al binario de Next. Se resuelve con require.resolve en vez de armar el
+ * string a mano: asi funciona igual con el node_modules aislado de pnpm, donde
+ * el paquete real vive dentro de .pnpm/ y arriba solo hay un symlink.
+ */
+function binarioDeNext() {
+  try {
+    return require.resolve("next/dist/bin/next");
+  } catch {
+    return resolve(RAIZ, "node_modules/next/dist/bin/next");
+  }
+}
+
+/** True si el puerto ya esta ocupado. */
+function puertoOcupado(puerto) {
+  return new Promise((ok) => {
+    const s = createServer()
+      .once("error", (e) => ok(e.code === "EADDRINUSE"))
+      .once("listening", () => s.close(() => ok(false)))
+      .listen(puerto, "127.0.0.1");
+  });
+}
 
 const args = process.argv.slice(2);
 const usarAirtable = args.includes("--airtable");
@@ -77,10 +105,24 @@ const entorno = {
 const procesos = [];
 
 function lanzar(nombre, comando, argumentos, extra = {}) {
+  // Sin `shell`. En Windows, process.execPath es "C:\\Program Files\\nodejs\\node.exe"
+  // y el shell corta en el espacio: cmd intenta ejecutar "C:\\Program".
+  // Como siempre invocamos el binario de node directo, el shell no hace falta.
   const p = spawn(comando, argumentos, {
+    cwd: RAIZ,
     env: { ...entorno, ...extra },
     stdio: ["ignore", "pipe", "pipe"],
-    shell: process.platform === "win32",
+  });
+
+  p.on("error", (e) => {
+    console.error(`\n  ✗ No se pudo iniciar ${nombre}: ${e.message}`);
+    if (e.code === "ENOENT") {
+      console.error(`    No existe: ${comando}`);
+      if (nombre === "app") {
+        console.error("    ¿Corriste `pnpm install`?");
+      }
+    }
+    cerrar(1);
   });
 
   const prefijo = `\x1b[90m[${nombre}]\x1b[0m `;
@@ -146,13 +188,37 @@ if (usarAirtable) {
   );
 }
 
-lanzar("mercadopago", process.execPath, ["scripts/mock-mercadopago.mjs"]);
-lanzar("n8n", process.execPath, ["scripts/mock-n8n.mjs"]);
+// --- chequeo previo de puertos ----------------------------------------------
+const ocupados = [];
+for (const [puerto, quien] of [
+  [PUERTO_APP, "la app"],
+  [4010, "Mercado Pago simulado"],
+  [4020, "n8n simulado"],
+]) {
+  if (await puertoOcupado(puerto)) ocupados.push(`${puerto} (${quien})`);
+}
 
-// next dev se lanza con un pequeño delay para que los mocks ya estén escuchando
+if (ocupados.length > 0) {
+  console.error(`  ✗ Estos puertos ya están en uso:\n`);
+  for (const o of ocupados) console.error(`      ${o}`);
+  console.error(`
+  Suele ser un sandbox anterior que quedó abierto. Cerralo, o usá otro puerto
+  para la app:
+
+      pnpm dev:sandbox --port=3001
+`);
+  process.exit(1);
+}
+
+lanzar("mercadopago", process.execPath, [
+  resolve(RAIZ, "scripts/mock-mercadopago.mjs"),
+]);
+lanzar("n8n", process.execPath, [resolve(RAIZ, "scripts/mock-n8n.mjs")]);
+
+// next dev arranca con un pequeño delay, para que los mocks ya estén escuchando
 setTimeout(() => {
-  lanzar("app", "node", [
-    "node_modules/next/dist/bin/next",
+  lanzar("app", process.execPath, [
+    binarioDeNext(),
     "dev",
     "-p",
     String(PUERTO_APP),

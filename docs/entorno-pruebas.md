@@ -166,6 +166,19 @@ pagados con un `curl`.
 
 ---
 
+## Si algo no arranca
+
+| Síntoma | Qué pasa |
+|---|---|
+| `Estos puertos ya están en uso` | Quedó un sandbox anterior abierto. Cerralo, o corré `pnpm dev:sandbox --port=3001` |
+| `No se pudo iniciar app: ENOENT` | Falta `pnpm install` |
+| El checkout abre pero el turno no se confirma | La notificación no llega. Revisá que `NEXT_PUBLIC_APP_URL` apunte al puerto donde corre la app |
+| `⚠ MERCADOPAGO_WEBHOOK_SECRET vacío` | El simulador firma igual, pero la app no valida. Solo importa si querés probar la validación |
+
+Los tres procesos son hijos de `sandbox.mjs`: con `Ctrl+C` se cierran todos.
+
+---
+
 ## Probar solo una pieza
 
 ```bash

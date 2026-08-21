@@ -20,6 +20,14 @@ cp .env.example .env.local
 pnpm dev
 ```
 
+En **Windows con CMD**, `cp` no existe; el resto es igual:
+
+```cmd
+copy .env.example .env.local
+```
+
+(en PowerShell `cp` funciona, porque es un alias de `Copy-Item`)
+
 Abrí <http://localhost:3000>. **Funciona sin configurar ninguna cuenta**: si
 faltan credenciales, la app cae automáticamente al proveedor `mock` con datos
 de ejemplo y se puede navegar el flujo completo.
@@ -45,6 +53,13 @@ pnpm dev:sandbox
 Levanta la app junto a un **Mercado Pago simulado** y un **n8n simulado**, para
 recorrer el flujo de cobro de punta a punta sin ninguna cuenta y sin exponer
 nada a internet. Detalle en [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
+
+Si alguno de los tres puertos (3000, 4010, 4020) está ocupado, avisa cuál antes
+de arrancar. Para mover la app:
+
+```bash
+pnpm dev:sandbox --port=3001
+```
 
 ### Requisitos
 
