@@ -1,11 +1,21 @@
-// Agenda del profesional: sus turnos del dia y marcado de asistencia (paso 11).
+// Agenda del profesional (paso 11 del flujo).
+//
+// Alcance deliberadamente corto: funciona como parte de trabajo. El profesional
+// ve a quién atiende y marca si vino. No ve importes ni estado de pago —saber
+// si el paciente pagó puede condicionar el trato y no hace a su tarea— y no
+// puede cancelar ni reprogramar, porque eso tiene consecuencias sobre el cobro
+// y sobre el paciente: es una decisión de la administración.
+//
+// El dueño entra a la misma pantalla y ahí sí ve todo, y puede elegir de quién
+// es la agenda.
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BrandHeader, BrandStyle } from "@/components/brand";
+import { AppFooter, AppHeader, Page, PageHeader } from "@/components/app-shell";
+import { BrandStyle } from "@/components/brand";
 import { AttendanceControls } from "@/components/attendance-controls";
-import { LogoutButton } from "@/components/auth-forms";
-import { Card, EmptyState, PaymentBadge, StatusBadge } from "@/components/ui";
+import { Alert, Card, EmptyState, PaymentBadge, StatusBadge } from "@/components/ui";
 import { requirePageSession } from "@/lib/auth/guards";
+import { roleCan } from "@/lib/auth/permissions";
 import { db, expandBookings } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
 import { toDateKey, toTimeLabel } from "@/lib/utils/dates";
@@ -13,7 +23,7 @@ import { toDateKey, toTimeLabel } from "@/lib/utils/dates";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Mi agenda · Turnos",
+  title: "Mi agenda",
   robots: { index: false, follow: false },
 };
 
@@ -26,10 +36,13 @@ export default async function EmployeeAgenda({
   const tenant = await requireTenant();
   const profesionales = await db.listProfessionals(tenant.id);
 
-  // El duenio puede mirar la agenda de cualquiera; el profesional, solo la
-  // suya. El ?profesional= de la URL se ignora para el rol employee.
-  const puedeElegir = sesion.role === "owner";
-  const activo = puedeElegir
+  const puedeElegirProfesional = roleCan(sesion.role, "bookings:view:all");
+  const veImportes = roleCan(sesion.role, "money:view");
+  const puedeMarcar = roleCan(sesion.role, "bookings:attendance");
+
+  // El ?profesional= de la URL solo lo obedece quien puede ver todas las
+  // agendas. Para un profesional se ignora y siempre se usa el de su sesión.
+  const activo = puedeElegirProfesional
     ? (profesionales.find((p) => p.id === searchParams.profesional) ??
       profesionales[0])
     : (profesionales.find((p) => p.id === sesion.professionalId) ?? null);
@@ -43,15 +56,17 @@ export default async function EmployeeAgenda({
     ? await db.listBookings(tenant.id, { professionalId: activo.id })
     : [];
 
-  const detalles = (await expandBookings(tenant.id, bookings)).filter(
-    (b) => toDateKey(b.startsAt, tenant.timezone) === fecha
-  );
+  const detalles = (await expandBookings(tenant.id, bookings))
+    .filter((b) => toDateKey(b.startsAt, tenant.timezone) === fecha)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
-  const link = (params: { profesional?: string; fecha?: string }) => {
+  const link = (p: { profesional?: string; fecha?: string }) => {
     const qs = new URLSearchParams();
-    if (params.profesional) qs.set("profesional", params.profesional);
-    if (params.fecha) qs.set("fecha", params.fecha);
-    return `/employee/agenda?${qs.toString()}`;
+    if (p.profesional && puedeElegirProfesional)
+      qs.set("profesional", p.profesional);
+    if (p.fecha) qs.set("fecha", p.fecha);
+    const s = qs.toString();
+    return s ? `/employee/agenda?${s}` : "/employee/agenda";
   };
 
   const desplazar = (dias: number) =>
@@ -61,57 +76,67 @@ export default async function EmployeeAgenda({
 
   const atendidos = detalles.filter((b) => b.status === "completed").length;
   const ausentes = detalles.filter((b) => b.status === "no_show").length;
+  const pendientes = detalles.filter(
+    (b) => b.status === "confirmed" || b.status === "pending_payment"
+  ).length;
+
+  const fechaLarga = new Intl.DateTimeFormat("es-AR", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${fecha}T12:00:00Z`));
 
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} subtitle="Agenda del profesional" />
+      <AppHeader
+        tenant={tenant}
+        subtitle="Agenda del profesional"
+        backTo={puedeElegirProfesional ? "/admin" : undefined}
+        backLabel="Volver al panel"
+      />
 
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {puedeElegir ? (
-            <div className="flex flex-wrap gap-2">
-              {profesionales.map((p) => (
-                <Link
-                  key={p.id}
-                  href={link({ profesional: p.id, fecha })}
-                  className={`rounded-full border px-3 py-1 text-sm transition ${
-                    activo?.id === p.id
-                      ? "border-brand bg-brand text-brand-fg"
-                      : "bg-white hover:border-brand"
-                  }`}
-                >
-                  {p.name}
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm font-medium">{sesion.name}</p>
-          )}
+      <Page>
+        <PageHeader
+          title={activo?.name ?? "Mi agenda"}
+          description={
+            puedeElegirProfesional
+              ? "Vista del profesional. Desde acá se marca la asistencia del día."
+              : "Tus turnos del día. Marcá la asistencia a medida que atendés."
+          }
+        />
 
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <span className="truncate">{sesion.email}</span>
-            <LogoutButton className="text-xs text-slate-500 hover:text-slate-900" />
+        {puedeElegirProfesional && profesionales.length > 1 && (
+          <div className="mb-5 flex flex-wrap gap-2">
+            {profesionales.map((p) => (
+              <Link
+                key={p.id}
+                href={link({ profesional: p.id, fecha })}
+                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                  activo?.id === p.id
+                    ? "border-brand bg-brand text-brand-fg"
+                    : "border-line bg-surface hover:bg-surface-2"
+                }`}
+              >
+                {p.name}
+              </Link>
+            ))}
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center justify-between gap-3">
+        {/* Navegación por día */}
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 shadow-card">
           <Link
             href={link({ profesional: activo?.id, fecha: desplazar(-1) })}
-            className="rounded-lg border bg-white px-3 py-1.5 text-sm hover:border-brand"
+            className="rounded-lg px-3 py-1.5 text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+            aria-label="Día anterior"
           >
-            ← Día anterior
+            ←<span className="ml-1.5 hidden sm:inline">Anterior</span>
           </Link>
 
           <div className="text-center">
-            <p className="font-semibold">
-              {new Intl.DateTimeFormat("es-AR", {
-                timeZone: "UTC",
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              }).format(new Date(`${fecha}T12:00:00Z`))}
-            </p>
+            <p className="font-medium capitalize">{fechaLarga}</p>
             {fecha !== hoyKey && (
               <Link
                 href={link({ profesional: activo?.id, fecha: hoyKey })}
@@ -124,74 +149,93 @@ export default async function EmployeeAgenda({
 
           <Link
             href={link({ profesional: activo?.id, fecha: desplazar(1) })}
-            className="rounded-lg border bg-white px-3 py-1.5 text-sm hover:border-brand"
+            className="rounded-lg px-3 py-1.5 text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+            aria-label="Día siguiente"
           >
-            Día siguiente →
+            <span className="mr-1.5 hidden sm:inline">Siguiente</span>→
           </Link>
         </div>
 
         {detalles.length > 0 && (
-          <p className="text-sm text-slate-500">
-            {detalles.length} turno{detalles.length === 1 ? "" : "s"} ·{" "}
-            {atendidos} atendido{atendidos === 1 ? "" : "s"} · {ausentes}{" "}
-            ausente{ausentes === 1 ? "" : "s"}
+          <p className="mb-4 text-sm text-fg-muted">
+            <span className="tabular font-medium text-fg">{detalles.length}</span>{" "}
+            turno{detalles.length === 1 ? "" : "s"} · {pendientes} por atender ·{" "}
+            {atendidos} atendido{atendidos === 1 ? "" : "s"} · {ausentes} ausente
+            {ausentes === 1 ? "" : "s"}
           </p>
         )}
 
         {!activo ? (
           <EmptyState>
-            {puedeElegir
-              ? "No hay profesionales cargados."
-              : "Tu usuario todavía no está vinculado a una ficha de profesional. Pedile a la administración que lo asocie."}
+            {puedeElegirProfesional ? (
+              "Todavía no hay profesionales cargados."
+            ) : (
+              <>
+                Tu usuario no está vinculado a una ficha de profesional. Pedile a
+                la administración que lo asocie desde{" "}
+                <span className="font-medium">Equipo</span>.
+              </>
+            )}
           </EmptyState>
         ) : detalles.length === 0 ? (
-          <EmptyState>
-            {activo.name} no tiene turnos ese día.
-          </EmptyState>
+          <EmptyState>No hay turnos agendados para este día.</EmptyState>
         ) : (
-          <Card className="divide-y p-0">
+          <Card padding={false} className="divide-y divide-line">
             {detalles.map((b) => (
-              <div
+              <article
                 key={b.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4"
+                className="flex flex-wrap items-start gap-x-4 gap-y-3 p-4 sm:p-5"
               >
-                <span className="w-14 shrink-0 font-mono text-sm text-slate-600">
+                <span className="tabular w-14 shrink-0 pt-0.5 text-sm font-medium text-fg-muted">
                   {toTimeLabel(b.startsAt, tenant.timezone)}
                 </span>
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
-                    {b.client?.name ?? "Cliente"}
+                    {b.client?.name ?? "Paciente"}
                   </p>
-                  <p className="truncate text-sm text-slate-500">
+                  <p className="mt-0.5 truncate text-sm text-fg-muted">
                     {b.service?.name} · {b.service?.durationMinutes} min
                   </p>
                   {b.client?.phone && (
-                    <p className="text-xs text-slate-400">{b.client.phone}</p>
+                    <a
+                      href={`tel:${b.client.phone}`}
+                      className="mt-1 inline-block text-xs text-fg-subtle hover:text-brand"
+                    >
+                      {b.client.phone}
+                    </a>
                   )}
                   {b.notes && (
-                    <p className="mt-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+                    <p className="mt-2 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-relaxed text-fg-muted">
                       {b.notes}
                     </p>
                   )}
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex gap-2">
-                    <PaymentBadge status={b.paymentStatus} />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {/* El estado del pago solo para quien administra */}
+                    {veImportes && <PaymentBadge status={b.paymentStatus} />}
                     <StatusBadge status={b.status} />
                   </div>
-                  <AttendanceControls
-                    bookingId={b.id}
-                    tenantSlug={tenant.slug}
-                    status={b.status}
-                  />
+                  {puedeMarcar && (
+                    <AttendanceControls bookingId={b.id} status={b.status} />
+                  )}
                 </div>
-              </div>
+              </article>
             ))}
           </Card>
         )}
-      </main>
+
+        {!puedeElegirProfesional && detalles.length > 0 && (
+          <Alert tone="info" className="mt-6">
+            Para cancelar o reprogramar un turno, hablá con la administración.
+            Desde acá solo se registra la asistencia.
+          </Alert>
+        )}
+      </Page>
+
+      <AppFooter tenant={tenant} />
     </>
   );
 }

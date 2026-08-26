@@ -62,7 +62,7 @@ async function mpFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /**
- * Paso 5: crea la preferencia de pago de la senia (o del total).
+ * Paso 5: crea la preferencia de pago de la seña (o del total).
  * external_reference lleva el bookingId, que es lo que despues nos permite
  * atar el pago al turno cuando llega el webhook.
  */
@@ -78,13 +78,13 @@ export async function createPaymentPreference(args: {
   const appUrl = config.appUrl.replace(/\/$/, "");
   const vuelta = `${appUrl}/book/gracias?token=${booking.publicToken}`;
 
-  const esSenia = amount < service.price;
+  const esSeña = amount < service.price;
 
   const body = {
     items: [
       {
         id: service.id,
-        title: esSenia
+        title: esSeña
           ? `Seña — ${service.name} en ${tenant.name}`
           : `${service.name} en ${tenant.name}`,
         description: `Turno del ${booking.startsAt}`,

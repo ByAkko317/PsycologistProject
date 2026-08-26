@@ -1,44 +1,35 @@
-// Inyecta el color del tenant como CSS variables. Todo lo que use `bg-brand`
-// o `text-brand` toma el color correcto sin recompilar Tailwind.
+// Aplica el color del tenant sobre los tokens del sistema de diseño.
+// Todo lo que use `bg-brand` o `text-brand` toma el color correcto sin
+// recompilar Tailwind y sin romper el modo oscuro.
 import { contrastForeground, hexToRgbChannels } from "@/lib/tenant";
 import type { Tenant } from "@/lib/types";
 
-export function BrandStyle({ tenant }: { tenant: Tenant }) {
-  const css = `:root{--brand-rgb:${hexToRgbChannels(
-    tenant.brandColor
-  )};--brand-fg-rgb:${contrastForeground(tenant.brandColor)};}`;
-  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+/**
+ * `--brand-soft` es el color de marca muy diluido, para fondos de chips.
+ * Necesita dos versiones: en claro se aclara hacia el blanco, y en oscuro se
+ * oscurece. Un único valor haría que los chips quemen la vista en modo oscuro.
+ */
+function tonosSuaves(hex: string): { claro: string; oscuro: string } {
+  const [r, g, b] = hexToRgbChannels(hex).split(" ").map(Number);
+  return {
+    claro: [r, g, b].map((c) => Math.round(c + (255 - c) * 0.92)).join(" "),
+    oscuro: [r, g, b].map((c) => Math.round(c * 0.28 + 18)).join(" "),
+  };
 }
 
-export function BrandHeader({
-  tenant,
-  subtitle,
-}: {
-  tenant: Tenant;
-  subtitle?: string;
-}) {
-  return (
-    <header className="border-b bg-white">
-      <div className="mx-auto flex max-w-4xl items-center gap-3 px-6 py-4">
-        {tenant.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={tenant.logoUrl}
-            alt={tenant.name}
-            className="h-9 w-9 rounded-lg object-cover"
-          />
-        ) : (
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-fg">
-            {tenant.name.slice(0, 2).toUpperCase()}
-          </span>
-        )}
-        <div>
-          <p className="font-semibold leading-tight">{tenant.name}</p>
-          {subtitle && (
-            <p className="text-xs text-slate-500">{subtitle}</p>
-          )}
-        </div>
-      </div>
-    </header>
-  );
+export function BrandStyle({ tenant }: { tenant: Pick<Tenant, "brandColor"> }) {
+  const brand = hexToRgbChannels(tenant.brandColor);
+  const soft = tonosSuaves(tenant.brandColor);
+
+  const css = [
+    `:root{`,
+    `--brand:${brand};`,
+    `--brand-fg:${contrastForeground(tenant.brandColor)};`,
+    `--brand-soft:${soft.claro};`,
+    `--ring:${brand};`,
+    `}`,
+    `.dark{--brand-soft:${soft.oscuro};--ring:${brand};}`,
+  ].join("");
+
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }

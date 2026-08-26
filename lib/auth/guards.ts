@@ -67,7 +67,7 @@ export function requireActionSession(roles: UserRole[]): SessionPayload {
 }
 
 /**
- * Un empleado solo puede operar sobre SU agenda; el duenio, sobre cualquiera.
+ * Un empleado solo puede operar sobre SU agenda; el dueño, sobre cualquiera.
  * Devuelve el professionalId que corresponde usar, o null = todos.
  */
 export function scopeProfessional(

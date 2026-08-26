@@ -168,7 +168,7 @@ n8n/                    andamiaje para el colaborador (ver n8n/README.md)
 scripts/
   only-pnpm.mjs         guard: bloquea npm install y yarn install
   setup-git-remote.mjs  conecta el repo con GitHub sin exponer el token
-  crear-usuario.mjs     alta de duenio o profesional desde la terminal
+  crear-usuario.mjs     alta de dueño o profesional desde la terminal
   seed-airtable.mjs     carga de datos de ejemplo
   audit-flujo.mjs       auditoría de los 11 pasos del flujo
   mock-mercadopago.mjs  simulador de la pasarela de pago
@@ -301,17 +301,40 @@ Sesión propia sobre Airtable: hash **scrypt** de la contraseña y **cookie
 firmada con HMAC-SHA256**, `httpOnly` y `sameSite=lax`. Sin dependencias
 externas ni cuentas nuevas.
 
-| Rol | Ve | No puede |
-|---|---|---|
-| `owner` | todo el tenant: agenda completa, clientes, servicios, marca, y la agenda de cualquier profesional | — |
-| `employee` | **solo su propia agenda** y sus turnos | entrar a `/admin`, tocar turnos de otro profesional |
-| `client` | **solo sus turnos** | ver datos de otro paciente, entrar a `/admin` o `/employee` |
+Las capacidades de cada rol viven en un solo archivo,
+[`lib/auth/permissions.ts`](lib/auth/permissions.ts), que usan **los dos lados**:
+la UI para no dibujar botones que después darían 403, y el servidor para
+rechazar de verdad. Si estuvieran duplicadas, tarde o temprano se separan y
+aparece un botón que promete algo que el backend niega — o peor, una acción que
+la UI esconde pero el endpoint sigue aceptando.
+
+| | Paciente | Profesional | Administración |
+|---|:---:|:---:|:---:|
+| Reservar un turno | ✅ | — | ✅ |
+| Ver sus propios turnos | ✅ | — | ✅ |
+| Cancelar / reprogramar el propio | ✅ | — | ✅ |
+| Ver su agenda del día | — | ✅ | ✅ |
+| Marcar asistencia | — | ✅ | ✅ |
+| Ver importes y estado de pago | — | ❌ | ✅ |
+| Ver la ficha de cualquier paciente | — | ❌ | ✅ |
+| Cancelar o mover cualquier turno | — | ❌ | ✅ |
+| Editar servicios, precios y marca | — | ❌ | ✅ |
+| Alta y baja de usuarios del equipo | — | ❌ | ✅ |
+| Dashboard analítico | — | ❌ | ✅ |
+
+**Por qué el profesional puede tan poco.** Su agenda funciona como parte de
+trabajo: ve a quién atiende y registra si vino. No ve importes —saber si el
+paciente pagó puede condicionar el trato y no hace a su tarea— y no cancela ni
+reprograma, porque eso tiene consecuencias sobre el cobro y sobre la otra
+persona. Es una decisión de la administración.
 
 Detalles que importan:
 
 - **El filtro sale siempre de la sesión, nunca de la URL.** Un profesional que
   ponga `?profesional=otro` sigue viendo la suya; un paciente que mande el
   `bookingId` de otro recibe un 404.
+- **Esconder un botón no es una medida de seguridad.** La UI condicional es
+  comodidad; cada acción se vuelve a chequear en el endpoint.
 - **404, no 403, cuando el recurso es de otro.** Un 403 confirmaría que ese
   turno existe.
 - **El link del mensaje sigue funcionando sin login.** `/portal?token=…` da
@@ -330,10 +353,42 @@ desarrollo genera uno efímero y avisa.
 
 ---
 
+## Interfaz
+
+- **Modo claro y oscuro.** La elección se guarda en el navegador; si nunca se
+  eligió, se sigue la preferencia del sistema y se acompañan sus cambios en
+  vivo. Un script inline en el `<head>` aplica el tema **antes del primer
+  pintado**: sin eso, quien usa modo oscuro vería un fogonazo blanco en cada
+  carga.
+- **Ningún componente escribe un color literal.** Todo pasa por tokens
+  semánticos (`bg-surface`, `text-fg-muted`, `border-line`) definidos en
+  [`app/globals.css`](app/globals.css). El modo oscuro es cambiar esas
+  variables, no duplicar clases.
+- **Siempre hay salida.** El logo del header vuelve al inicio en todas las
+  pantallas, y las que están dentro de un flujo suman una flecha de retroceso
+  explícita.
+- **Los errores no dejan a nadie encerrado.** Cualquier error muestra qué pasó,
+  ofrece reintentar, y vuelve solo al inicio a los 10 segundos — con un botón
+  para cancelar la cuenta, porque si alguien está copiando el código del error
+  para reportarlo, que la página se le escape es peor que el error original.
+
+Para comprobar el manejo de errores:
+
+```bash
+pnpm dev
+# y entrar a http://localhost:3000/debug/error
+```
+
+Esa ruta solo existe en desarrollo. Para probarla contra un build de producción
+hay que habilitarla a propósito con `ALLOW_DEBUG_ROUTES=1 pnpm start`.
+
+---
+
 ## Qué falta
 
 - [ ] **Recuperar contraseña** por email (vía n8n).
-- [ ] **ABM de usuarios desde el panel** — hoy los crea `pnpm crear:usuario`.
+- [ ] **Cambio de contraseña desde el perfil** — la lógica existe
+      (`changePassword`), falta la pantalla.
 - [ ] **Rate limiting** en `/login` y en la creación de turnos.
 - [ ] **Proveedor Firebase** (`lib/services/db.firebase.ts`).
 - [ ] **Nodos reales de WhatsApp y email** dentro de n8n.

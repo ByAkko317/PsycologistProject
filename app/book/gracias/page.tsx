@@ -1,7 +1,8 @@
 // Pantalla final del flujo de reserva. Muestra el detalle y el link de gestion.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BrandHeader, BrandStyle } from "@/components/brand";
+import { AppFooter, AppHeader, Page } from "@/components/app-shell";
+import { BrandStyle } from "@/components/brand";
 import { StatusBadge } from "@/components/ui";
 import { db, getBookingDetail } from "@/lib/services/db";
 import { formatMoney } from "@/lib/tenant";
@@ -29,12 +30,12 @@ export default async function GraciasPage({
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} />
+      <AppHeader tenant={tenant} />
 
       <main className="mx-auto max-w-xl px-6 py-12">
         <span
           className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-2xl ${
-            pendiente ? "bg-amber-100" : "bg-emerald-100"
+            pendiente ? "bg-warn-soft" : "bg-ok-soft"
           }`}
           aria-hidden
         >
@@ -44,13 +45,13 @@ export default async function GraciasPage({
         <h1 className="mt-4 text-2xl font-bold">
           {pendiente ? "Turno reservado, falta el pago" : "¡Turno confirmado!"}
         </h1>
-        <p className="mt-2 text-slate-600">
+        <p className="mt-2 text-fg-muted">
           {pendiente
             ? "Tu horario queda reservado unos minutos hasta que se acredite la seña."
             : `Te esperamos en ${tenant.name}. Vas a recibir la confirmación por WhatsApp o email.`}
         </p>
 
-        <dl className="mt-8 rounded-xl border bg-white p-5 text-sm">
+        <dl className="mt-8 rounded-xl border bg-surface p-5 text-sm">
           <Fila termino="Servicio" valor={detail.service?.name ?? "—"} />
           <Fila termino="Profesional" valor={detail.professional?.name ?? "—"} />
           <Fila
@@ -62,16 +63,16 @@ export default async function GraciasPage({
             valor={formatMoney(detail.amountTotal, tenant)}
           />
           <div className="flex justify-between gap-4 py-2">
-            <dt className="text-slate-500">Estado</dt>
+            <dt className="text-fg-muted">Estado</dt>
             <dd>
               <StatusBadge status={detail.status} />
             </dd>
           </div>
         </dl>
 
-        <div className="mt-6 rounded-xl border border-dashed bg-white p-5">
+        <div className="mt-6 rounded-xl border border-dashed bg-surface p-5">
           <p className="text-sm font-medium">Guardá este link</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-fg-muted">
             Te sirve para cancelar o reprogramar hasta{" "}
             {tenant.cancellationHours} horas antes.
           </p>
@@ -97,7 +98,7 @@ export default async function GraciasPage({
 function Fila({ termino, valor }: { termino: string; valor: string }) {
   return (
     <div className="flex justify-between gap-4 border-b py-2">
-      <dt className="text-slate-500">{termino}</dt>
+      <dt className="text-fg-muted">{termino}</dt>
       <dd className="text-right font-medium">{valor}</dd>
     </div>
   );

@@ -27,7 +27,7 @@ export default async function AdminMarca() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Marca y configuración</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-fg-muted">
           El color se aplica al instante en el portal de reservas, la agenda y
           este panel.
         </p>
@@ -49,7 +49,7 @@ export default async function AdminMarca() {
                   defaultValue={tenant.brandColor}
                   className="h-10 w-14 cursor-pointer rounded-lg border"
                 />
-                <span className="flex items-center rounded-lg bg-slate-100 px-3 font-mono text-sm text-slate-600">
+                <span className="flex items-center rounded-lg bg-surface-2 px-3 font-mono text-sm text-fg-muted">
                   {tenant.brandColor}
                 </span>
               </div>
@@ -86,7 +86,7 @@ export default async function AdminMarca() {
           <div className="space-y-2">
             {DIAS.map((nombre, dia) => (
               <div key={dia} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 text-sm text-slate-600">
+                <span className="w-24 shrink-0 text-sm text-fg-muted">
                   {nombre}
                 </span>
                 <input
@@ -98,7 +98,7 @@ export default async function AdminMarca() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-fg-muted">
             Un profesional puede tener su propio horario; en ese caso pisa al del
             negocio para sus turnos.
           </p>
@@ -157,7 +157,7 @@ function Campo({
         defaultValue={defaultValue}
         className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand"
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
     </div>
   );
 }

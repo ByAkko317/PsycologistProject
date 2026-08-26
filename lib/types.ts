@@ -43,7 +43,7 @@ export interface Service {
   durationMinutes: number;
   price: number;
   /**
-   * Porcentaje del precio que se cobra como senia al reservar (0-100).
+   * Porcentaje del precio que se cobra como seña al reservar (0-100).
    * 0 = no requiere pago por adelantado.
    */
   depositPercent: number;
@@ -78,7 +78,7 @@ export interface Client {
 
 /**
  * Roles del sistema.
- *   owner    — duenio del negocio: ve y edita todo el tenant
+ *   owner    — dueño del negocio: ve y edita todo el tenant
  *   employee — profesional: solo SU agenda y sus turnos
  *   client   — paciente: solo SUS turnos
  */

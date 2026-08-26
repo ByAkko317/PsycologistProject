@@ -79,7 +79,7 @@ export function PortalActions({
 
   if (!puedeGestionar) {
     return (
-      <div className="rounded-xl border border-dashed bg-white p-5 text-sm text-slate-600">
+      <div className="rounded-xl border border-dashed bg-surface p-5 text-sm text-fg-muted">
         Este turno ya no admite cambios online: la política del consultorio
         acepta cancelaciones hasta {cancellationHours} horas antes. Escribinos
         para reprogramarlo.
@@ -135,12 +135,12 @@ export function PortalActions({
   return (
     <div className="space-y-4">
       {exito && (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <p className="rounded-lg border border-ok/25 bg-ok-soft px-4 py-3 text-sm text-ok">
           {exito}
         </p>
       )}
       {error && (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <p className="rounded-lg border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
           {error}
         </p>
       )}
@@ -161,7 +161,7 @@ export function PortalActions({
               setModo("cancelar");
               setExito(null);
             }}
-            className="rounded-lg border px-4 py-2 text-sm hover:border-rose-300 hover:text-rose-700"
+            className="rounded-lg border px-4 py-2 text-sm hover:border-danger hover:text-danger"
           >
             Cancelar turno
           </button>
@@ -169,9 +169,9 @@ export function PortalActions({
       )}
 
       {modo === "cancelar" && (
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-surface p-5">
           <p className="font-medium">¿Seguro que querés cancelar?</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-fg-muted">
             El horario vuelve a quedar disponible para otra persona.
           </p>
           <textarea
@@ -185,7 +185,7 @@ export function PortalActions({
             <button
               onClick={cancelar}
               disabled={enviando}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {enviando ? "Cancelando…" : "Sí, cancelar"}
             </button>
@@ -200,9 +200,9 @@ export function PortalActions({
       )}
 
       {modo === "reprogramar" && (
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-surface p-5">
           <p className="font-medium">Elegí el nuevo horario</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-fg-muted">
             Mismo servicio y mismo profesional.
           </p>
 
@@ -223,9 +223,9 @@ export function PortalActions({
           </div>
 
           {cargando ? (
-            <p className="text-sm text-slate-500">Buscando horarios…</p>
+            <p className="text-sm text-fg-muted">Buscando horarios…</p>
           ) : slots.filter((s) => s.available).length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-fg-muted">
               No quedan horarios libres ese día.
             </p>
           ) : (
@@ -247,7 +247,7 @@ export function PortalActions({
 
           <button
             onClick={() => setModo("menu")}
-            className="mt-4 text-sm text-slate-500 hover:underline"
+            className="mt-4 text-sm text-fg-muted hover:underline"
           >
             ← Volver
           </button>

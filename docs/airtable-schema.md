@@ -53,7 +53,7 @@ Un dia ausente significa **cerrado**.
 | `description` | Long text | Opcional |
 | `durationMinutes` | Number (integer) | Duracion del turno |
 | `price` | Number (decimal) | Precio total |
-| `depositPercent` | Number (integer) | `0` = sin senia; `30` = 30% por adelantado |
+| `depositPercent` | Number (integer) | `0` = sin seña; `30` = 30% por adelantado |
 | `active` | Checkbox | Solo los activos aparecen en `/book` |
 | `professionalIds` | Long text | Record IDs separados por coma |
 
@@ -118,7 +118,7 @@ Un dia ausente significa **cerrado**.
 
 ## 6. `Users`
 
-Login de duenio, profesional y paciente.
+Login de dueño, profesional y paciente.
 
 | Columna | Tipo Airtable | Notas |
 |---|---|---|
@@ -126,7 +126,7 @@ Login de duenio, profesional y paciente.
 | `email` | Email | Clave de login. Unico dentro del tenant |
 | `name` | Single line text | |
 | `role` | Single select | `owner`, `employee`, `client` |
-| `passwordHash` | Single line text | Hash scrypt. **Nunca** la contrasenia en claro |
+| `passwordHash` | Single line text | Hash scrypt. **Nunca** la contraseña en claro |
 | `active` | Checkbox | Desmarcado = no puede entrar |
 | `professionalId` | Single line text | Solo `employee`: record ID de `Professionals` |
 | `clientId` | Single line text | Solo `client`: record ID de `Clients` |
@@ -134,8 +134,8 @@ Login de duenio, profesional y paciente.
 | `lastLoginAt` | Single line text | ISO 8601, lo escribe la app |
 
 > **Restringí los permisos de esta tabla en Airtable.** El `passwordHash` no
-> permite recuperar la contrasenia, pero un colaborador con acceso de escritura
-> puede reemplazarlo por uno propio y entrar como duenio.
+> permite recuperar la contraseña, pero un colaborador con acceso de escritura
+> puede reemplazarlo por uno propio y entrar como dueño.
 
 ### Crear el primer usuario
 
@@ -150,7 +150,7 @@ pnpm crear:usuario --email ana@consultorio.test --rol employee \
   --profesional recXXXXXXXXXXXXXX --nombre "Lic. Ana Torres"
 ```
 
-La contrasenia se pide por consola, no por argumento: asi no queda en el
+La contraseña se pide por consola, no por argumento: asi no queda en el
 historial de la terminal.
 
 Los pacientes se registran solos en `/registro`. Si ya habian reservado con ese

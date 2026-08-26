@@ -148,9 +148,10 @@ async function auditar() {
         : `ninguno para "${servicio.name}"`);
 
     if (professionalId) {
-      // Busca el primer día con horarios libres dentro de 21 días.
+      // Busca desde el día 2, no desde mañana: la política de cancelación es
+      // de 24hs, y un turno demasiado cercano no se puede borrar al terminar.
       let encontrado = null;
-      for (let i = 1; i <= 21 && !encontrado; i++) {
+      for (let i = 2; i <= 21 && !encontrado; i++) {
         const fecha = new Date(Date.now() + i * 86_400_000)
           .toISOString()
           .slice(0, 10);

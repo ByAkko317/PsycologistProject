@@ -46,7 +46,7 @@ export default async function AdminAgenda({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Agenda</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-fg-muted">
           {detalles.length} turno{detalles.length === 1 ? "" : "s"}
           {incluirPasados ? " (incluye pasados)" : " desde hoy"}
         </p>
@@ -94,7 +94,7 @@ export default async function AdminAgenda({
         <div className="space-y-6">
           {[...porDia.entries()].map(([dia, turnos]) => (
             <section key={dia}>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-fg-muted">
                 {new Intl.DateTimeFormat("es-AR", {
                   timeZone: "UTC",
                   weekday: "long",
@@ -103,24 +103,24 @@ export default async function AdminAgenda({
                 }).format(new Date(`${dia}T12:00:00Z`))}
               </h2>
 
-              <Card className="divide-y p-0">
+              <Card className="divide-y divide-line p-0">
                 {turnos.map((b) => (
                   <div
                     key={b.id}
                     className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3"
                   >
-                    <span className="w-14 shrink-0 font-mono text-sm text-slate-600">
+                    <span className="w-14 shrink-0 font-mono text-sm text-fg-muted">
                       {toTimeLabel(b.startsAt, tenant.timezone)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
                         {b.client?.name ?? "Cliente"}
                       </p>
-                      <p className="truncate text-sm text-slate-500">
+                      <p className="truncate text-sm text-fg-muted">
                         {b.service?.name} · {b.professional?.name}
                       </p>
                     </div>
-                    <span className="text-sm text-slate-500">
+                    <span className="text-sm text-fg-muted">
                       {formatMoney(b.amountTotal, tenant)}
                     </span>
                     <div className="flex gap-2">
@@ -153,7 +153,7 @@ function Chip({
       className={`rounded-full border px-3 py-1 text-sm transition ${
         activo
           ? "border-brand bg-brand text-brand-fg"
-          : "bg-white hover:border-brand"
+          : "bg-surface hover:border-brand"
       }`}
     >
       {children}

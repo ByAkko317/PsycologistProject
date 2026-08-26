@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { AppHeader } from "@/components/app-shell";
 import { BrandStyle } from "@/components/brand";
 import { LoginForm } from "@/components/auth-forms";
-import { getSession, homeForRole } from "@/lib/auth/session";
+import { Card } from "@/components/ui";
+import { getSession } from "@/lib/auth/session";
+import { homeFor } from "@/lib/auth/permissions";
 import { resolveDataProvider } from "@/lib/config";
 import { requireTenant } from "@/lib/tenant";
 
@@ -19,9 +22,8 @@ export default async function LoginPage({
 }: {
   searchParams: { next?: string };
 }) {
-  // Si ya hay sesión, no tiene sentido mostrar el formulario.
   const sesion = getSession();
-  if (sesion) redirect(homeForRole(sesion.role));
+  if (sesion) redirect(homeFor(sesion));
 
   const tenant = await requireTenant();
   const esDemo = resolveDataProvider() === "mock";
@@ -29,37 +31,43 @@ export default async function LoginPage({
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-        <Link href="/" className="mb-8 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-fg">
-            {tenant.name.slice(0, 2).toUpperCase()}
-          </span>
-          <span className="font-semibold">{tenant.name}</span>
-        </Link>
+      <AppHeader tenant={tenant} backTo="/" backLabel="Volver al inicio" />
 
-        <h1 className="text-2xl font-bold">Iniciar sesión</h1>
-        <p className="mb-6 mt-1 text-sm text-slate-600">
+      <main className="mx-auto flex max-w-md flex-col justify-center px-6 py-14">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Iniciar sesión
+        </h1>
+        <p className="mb-7 mt-1.5 text-sm text-fg-muted">
           Pacientes, profesionales y administración entran por acá.
         </p>
 
         <LoginForm next={searchParams.next} />
 
         {esDemo && (
-          <div className="mt-8 rounded-xl border border-dashed bg-white p-4 text-sm">
-            <p className="font-medium">Cuentas de demostración</p>
-            <p className="mt-1 text-xs text-slate-500">
+          <Card className="mt-8">
+            <p className="text-sm font-medium">Cuentas de demostración</p>
+            <p className="mt-1 text-xs text-fg-subtle">
               Datos de ejemplo en memoria. Contraseña para todas:{" "}
-              <code className="rounded bg-slate-100 px-1">demo1234</code>
+              <code className="rounded bg-surface-2 px-1.5 py-0.5">
+                demo1234
+              </code>
             </p>
-            <ul className="mt-3 space-y-1 font-mono text-xs text-slate-600">
-              <li>admin@demo.test — dueño</li>
-              <li>ana@demo.test — profesional</li>
-              <li>sofia@ejemplo.test — paciente</li>
+            <ul className="mt-3 space-y-1.5 text-xs">
+              {[
+                ["admin@demo.test", "Administración"],
+                ["ana@demo.test", "Profesional"],
+                ["sofia@ejemplo.test", "Paciente"],
+              ].map(([mail, rol]) => (
+                <li key={mail} className="flex justify-between gap-3">
+                  <code className="text-fg-muted">{mail}</code>
+                  <span className="shrink-0 text-fg-subtle">{rol}</span>
+                </li>
+              ))}
             </ul>
-          </div>
+          </Card>
         )}
 
-        <p className="mt-8 text-center text-sm text-slate-500">
+        <p className="mt-8 text-center text-sm text-fg-muted">
           ¿Solo querés reservar?{" "}
           <Link href="/book" className="text-brand hover:underline">
             Reservá sin cuenta

@@ -1,6 +1,7 @@
 // PATCH /api/bookings/:id — paso 11: el empleado marca el resultado del turno.
 import { NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth/guards";
+import { roleCan } from "@/lib/auth/permissions";
 import { BookingError, setAttendance } from "@/lib/services/bookings";
 import { db } from "@/lib/services/db";
 
@@ -16,6 +17,15 @@ export async function PATCH(
   // Antes esto era publico: cualquiera podia marcar turnos como "asistio".
   const sesion = requireApiSession(["owner", "employee"]);
   if (sesion instanceof NextResponse) return sesion;
+
+  // La capability es la fuente de verdad, no el rol: si mañana se saca
+  // "bookings:attendance" de employee, este endpoint se cierra solo.
+  if (!roleCan(sesion.role, "bookings:attendance")) {
+    return NextResponse.json(
+      { error: "Tu usuario no puede marcar asistencia", code: "FORBIDDEN" },
+      { status: 403 }
+    );
+  }
 
   let body: { status?: string; tenant?: string };
   try {
@@ -33,7 +43,7 @@ export async function PATCH(
   }
 
   try {
-    // Un profesional solo toca SUS turnos; el duenio, cualquiera del tenant.
+    // Un profesional solo toca SUS turnos; el dueño, cualquiera del tenant.
     if (sesion.role === "employee") {
       const booking = await db.getBooking(sesion.tenantId, params.id);
       if (!booking) {

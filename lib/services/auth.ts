@@ -189,12 +189,8 @@ export async function createTeamUser(input: {
   const debil = validatePasswordStrength(input.password);
   if (debil) throw new AuthFlowError(debil, "WEAK_PASSWORD");
 
-  if (input.role === "employee" && !input.professionalId) {
-    throw new AuthFlowError(
-      "Un profesional necesita estar vinculado a una ficha de profesional",
-      "INVALID_INPUT"
-    );
-  }
+  // Un profesional puede crearse sin ficha vinculada: entra, pero no ve
+  // ninguna agenda hasta que se lo asocie. La pantalla de Equipo lo avisa.
 
   try {
     return await db.createUser(tenant.id, {

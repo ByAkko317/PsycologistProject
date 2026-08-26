@@ -1,7 +1,8 @@
 // Paso 1 a 6 del flujo: portal publico de reservas.
 // Server component: carga catalogo y marca; el wizard corre en el cliente.
 import Link from "next/link";
-import { BrandHeader, BrandStyle } from "@/components/brand";
+import { AppFooter, AppHeader, Page } from "@/components/app-shell";
+import { BrandStyle } from "@/components/brand";
 import { BookingWizard } from "@/components/booking-wizard";
 import { db } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
@@ -54,7 +55,7 @@ export default async function BookPage({
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} subtitle="Reservá tu turno online" />
+      <AppHeader tenant={tenant} subtitle="Reservá tu turno online" />
 
       <main className="mx-auto max-w-2xl px-6 py-10">
         <BookingWizard
@@ -71,7 +72,7 @@ export default async function BookPage({
           dateOptions={dateOptions}
         />
 
-        <p className="mt-10 border-t pt-6 text-sm text-slate-500">
+        <p className="mt-10 border-t pt-6 text-sm text-fg-muted">
           ¿Ya tenés un turno?{" "}
           <Link href="/portal" className="text-brand hover:underline">
             Gestionalo acá

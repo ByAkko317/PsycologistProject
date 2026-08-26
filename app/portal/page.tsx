@@ -7,7 +7,8 @@
 //      El filtro es por clientId de la sesión, nunca por un id de la URL.
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BrandHeader, BrandStyle } from "@/components/brand";
+import { AppFooter, AppHeader, Page } from "@/components/app-shell";
+import { BrandStyle } from "@/components/brand";
 import { LoginForm, LogoutButton } from "@/components/auth-forms";
 import { PortalActions } from "@/components/portal-actions";
 import { Card, EmptyState, PaymentBadge, StatusBadge } from "@/components/ui";
@@ -66,11 +67,11 @@ export default async function PortalPage({
     return (
       <>
         <BrandStyle tenant={tenant} />
-        <BrandHeader tenant={tenant} subtitle="Gestión de tu turno" />
+        <AppHeader tenant={tenant} subtitle="Gestión de tu turno" />
         <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
           <div>
             <h1 className="text-2xl font-bold">Hola {detail.client?.name}</h1>
-            <p className="mt-1 text-slate-600">
+            <p className="mt-1 text-fg-muted">
               Este es tu turno en {tenant.name}.
             </p>
           </div>
@@ -82,9 +83,9 @@ export default async function PortalPage({
             dateOptions={opcionesDeFecha(tenant)}
           />
 
-          <div className="rounded-xl border border-dashed bg-white p-5 text-sm">
+          <div className="rounded-xl border border-dashed bg-surface p-5 text-sm">
             <p className="font-medium">¿Querés ver todos tus turnos juntos?</p>
-            <p className="mt-1 text-slate-500">
+            <p className="mt-1 text-fg-muted">
               Con una cuenta no dependés del link de cada mensaje.
             </p>
             <Link
@@ -133,13 +134,13 @@ export default async function PortalPage({
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} subtitle="Mis turnos" />
+      <AppHeader tenant={tenant} subtitle="Mis turnos" />
 
       <main className="mx-auto max-w-xl space-y-8 px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">Hola {sesion.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">{sesion.email}</p>
+            <p className="mt-1 text-sm text-fg-muted">{sesion.email}</p>
           </div>
           <LogoutButton />
         </div>
@@ -175,7 +176,7 @@ export default async function PortalPage({
         {pasados.length > 0 && (
           <section>
             <h2 className="mb-3 text-lg font-semibold">Historial</h2>
-            <Card className="divide-y p-0">
+            <Card className="divide-y divide-line p-0">
               {pasados.slice(0, 20).map((b) => (
                 <div
                   key={b.id}
@@ -185,7 +186,7 @@ export default async function PortalPage({
                     <p className="truncate text-sm font-medium">
                       {b.service?.name}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-fg-muted">
                       {formatBookingDate(b.startsAt, tenant.timezone)} ·{" "}
                       {b.professional?.name}
                     </p>
@@ -256,7 +257,7 @@ function TurnoCard({
       </Card>
 
       {detail.status === "cancelled" ? (
-        <div className="rounded-xl border border-dashed bg-white p-5 text-sm text-slate-600">
+        <div className="rounded-xl border border-dashed bg-surface p-5 text-sm text-fg-muted">
           Este turno está cancelado.{" "}
           <Link
             href={`/book?tenant=${tenant.slug}`}
@@ -292,10 +293,10 @@ async function PedirLogin({
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} subtitle="Mis turnos" />
+      <AppHeader tenant={tenant} subtitle="Mis turnos" />
       <main className="mx-auto max-w-md px-6 py-12">
         <h1 className="text-2xl font-bold">Ver mis turnos</h1>
-        <p className="mb-6 mt-2 text-sm text-slate-600">
+        <p className="mb-6 mt-2 text-sm text-fg-muted">
           {conSesionAjena
             ? "Estás con un usuario del equipo. Para ver turnos de paciente, entrá con una cuenta de paciente."
             : "Entrá con tu cuenta para ver todos tus turnos juntos."}
@@ -307,8 +308,8 @@ async function PedirLogin({
           <LoginForm next="/portal" />
         )}
 
-        <div className="mt-8 border-t pt-6 text-sm text-slate-500">
-          <p className="font-medium text-slate-700">
+        <div className="mt-8 border-t pt-6 text-sm text-fg-muted">
+          <p className="font-medium text-fg">
             ¿Tenés el link del mensaje?
           </p>
           <p className="mt-1">
@@ -339,10 +340,10 @@ async function TokenInvalido() {
   return (
     <>
       <BrandStyle tenant={tenant} />
-      <BrandHeader tenant={tenant} />
+      <AppHeader tenant={tenant} />
       <main className="mx-auto max-w-xl px-6 py-12">
         <h1 className="text-2xl font-bold">No encontramos ese turno</h1>
-        <p className="mt-2 text-slate-600">
+        <p className="mt-2 text-fg-muted">
           El código puede estar incompleto o el turno pudo haberse eliminado.
           Revisá el link del mensaje de confirmación.
         </p>
@@ -359,7 +360,7 @@ async function TokenInvalido() {
 
 function Politica({ tenant }: { tenant: Tenant }) {
   return (
-    <p className="border-t pt-6 text-sm text-slate-500">
+    <p className="border-t pt-6 text-sm text-fg-muted">
       Política del negocio: cambios hasta {tenant.cancellationHours} horas antes
       del turno.
       {tenant.contactPhone && ` Consultas: ${tenant.contactPhone}`}
@@ -370,7 +371,7 @@ function Politica({ tenant }: { tenant: Tenant }) {
 function Fila({ termino, valor }: { termino: string; valor: string }) {
   return (
     <div className="flex justify-between gap-4 border-b py-2 last:border-0">
-      <dt className="text-slate-500">{termino}</dt>
+      <dt className="text-fg-muted">{termino}</dt>
       <dd className="text-right font-medium">{valor}</dd>
     </div>
   );

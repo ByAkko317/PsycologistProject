@@ -1,8 +1,8 @@
 // =============================================================================
-// Hash de contrasenias con scrypt (viene en Node, no suma dependencias).
+// Hash de contraseñas con scrypt (viene en Node, no suma dependencias).
 //
 // scrypt es deliberadamente lento y usa mucha memoria: eso encarece los ataques
-// de fuerza bruta por GPU. Nunca guardar una contrasenia en texto plano ni con
+// de fuerza bruta por GPU. Nunca guardar una contraseña en texto plano ni con
 // un hash rapido tipo SHA-256 pelado.
 // =============================================================================
 
@@ -34,7 +34,7 @@ const SALT_BYTES = 16;
 /** Formato guardado: scrypt$N$r$p$saltBase64$hashBase64 */
 export async function hashPassword(plain: string): Promise<string> {
   if (!plain || plain.length < 8) {
-    throw new Error("La contrasenia debe tener al menos 8 caracteres");
+    throw new Error("La contraseña debe tener al menos 8 caracteres");
   }
 
   const salt = randomBytes(SALT_BYTES);
@@ -57,7 +57,7 @@ export async function hashPassword(plain: string): Promise<string> {
 }
 
 /**
- * Verifica una contrasenia contra el hash guardado.
+ * Verifica una contraseña contra el hash guardado.
  * Nunca lanza por hash mal formado: devuelve false. Asi un registro corrupto
  * no distingue "usuario inexistente" de "hash roto" para quien esta probando.
  */
@@ -102,7 +102,7 @@ export async function verifyPassword(
  * un contexto de salud ya es informacion sensible.
  */
 export async function fakeVerify(): Promise<false> {
-  await scryptAsync("contrasenia-que-no-existe", randomBytes(SALT_BYTES), KEYLEN, {
+  await scryptAsync("contraseña-que-no-existe", randomBytes(SALT_BYTES), KEYLEN, {
     N,
     r,
     p,
@@ -111,13 +111,13 @@ export async function fakeVerify(): Promise<false> {
   return false;
 }
 
-/** Reglas minimas de contrasenia. Devuelve el motivo si no pasa. */
+/** Reglas minimas de contraseña. Devuelve el motivo si no pasa. */
 export function validatePasswordStrength(plain: string): string | null {
   if (plain.length < 8) return "Tiene que tener al menos 8 caracteres";
   if (plain.length > 200) return "Demasiado larga";
   if (/^\d+$/.test(plain)) return "No puede ser solo numeros";
   const comunes = [
-    "12345678", "password", "contrasenia", "qwertyui", "11111111", "123456789",
+    "12345678", "password", "contraseña", "qwertyui", "11111111", "123456789",
   ];
   if (comunes.includes(plain.toLowerCase())) return "Es demasiado facil de adivinar";
   return null;

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Crea un usuario del equipo (duenio o profesional) en Airtable.
+ * Crea un usuario del equipo (dueño o profesional) en Airtable.
  *
  *   pnpm crear:usuario --email admin@consultorio.test --rol owner
  *   pnpm crear:usuario --email ana@consultorio.test --rol employee --profesional recXXX
  *
- * La contrasenia se pide por consola y NO queda en el historial de la terminal.
- * Se guarda solo el hash scrypt; la contrasenia en si no se persiste en ningun
+ * La contraseña se pide por consola y NO queda en el historial de la terminal.
+ * Se guarda solo el hash scrypt; la contraseña en si no se persiste en ningun
  * lado.
  *
  * No hay registro publico para estos roles a proposito: si /registro pudiera
- * crear duenios, cualquiera se daria de alta como administrador.
+ * crear dueños, cualquiera se daria de alta como administrador.
  */
 
 import { createInterface } from "node:readline";
@@ -146,7 +146,7 @@ async function main() {
   console.log(`\n  Usuario nuevo para el tenant "${tenantSlug}"`);
   console.log(`  email: ${email}   rol: ${rol}\n`);
 
-  const pass1 = await preguntarOculto("  Contrasenia (min 8): ");
+  const pass1 = await preguntarOculto("  Contraseña (min 8): ");
   if (pass1.length < 8) {
     console.error("\n  Demasiado corta.");
     process.exit(1);

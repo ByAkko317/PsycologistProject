@@ -1,4 +1,4 @@
-// Catalogo editable: precio, duracion, senia y que profesional lo presta.
+// Catalogo editable: precio, duracion, seña y que profesional lo presta.
 import { Card, SectionTitle } from "@/components/ui";
 import { db } from "@/lib/services/db";
 import { formatMoney, requireTenant } from "@/lib/tenant";
@@ -17,7 +17,7 @@ export default async function AdminServicios() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Servicios</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-fg-muted">
           Lo que ve el cliente en el paso 1 de la reserva. La seña define si el
           turno pasa por Mercado Pago.
         </p>
@@ -31,7 +31,7 @@ export default async function AdminServicios() {
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-semibold">{s.name}</h2>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-fg-muted">
                   {formatMoney(s.price, tenant)} · {s.durationMinutes} min
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default async function AdminServicios() {
                   {profesionales.map((p) => (
                     <label
                       key={p.id}
-                      className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm"
+                      className="flex items-center gap-2 rounded-lg border bg-surface px-3 py-1.5 text-sm"
                     >
                       <input
                         type="checkbox"
@@ -146,7 +146,7 @@ export default async function AdminServicios() {
                 {profesionales.map((p) => (
                   <label
                     key={p.id}
-                    className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm"
+                    className="flex items-center gap-2 rounded-lg border bg-surface px-3 py-1.5 text-sm"
                   >
                     <input
                       type="checkbox"
@@ -195,7 +195,7 @@ function Campo({
         defaultValue={defaultValue}
         className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand"
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
     </div>
   );
 }

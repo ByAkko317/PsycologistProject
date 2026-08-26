@@ -198,7 +198,7 @@ function seed(): Store {
     });
   });
 
-  // Usuarios demo. El hash corresponde a la contrasenia "demo1234" y se
+  // Usuarios demo. El hash corresponde a la contraseña "demo1234" y se
   // genera al vuelo la primera vez que alguien intenta entrar (ver
   // asegurarUsuariosDemo): no se hardcodea un hash en el repo.
   const users: User[] = [];
@@ -209,10 +209,10 @@ function seed(): Store {
 /**
  * Crea los usuarios de demostracion la primera vez que se los necesita.
  *
- * Solo corre con el proveedor mock. Las contrasenias son publicas a proposito:
+ * Solo corre con el proveedor mock. Las contraseñas son publicas a proposito:
  * es un entorno de demostracion sin datos reales.
  *
- *   admin@demo.test     / demo1234   -> duenio
+ *   admin@demo.test     / demo1234   -> dueño
  *   ana@demo.test       / demo1234   -> profesional (Lic. Ana Torres)
  *   martin@demo.test    / demo1234   -> profesional (Lic. Martin Ruiz)
  *   sofia@ejemplo.test  / demo1234   -> paciente (con turnos ya cargados)
@@ -232,7 +232,7 @@ export async function asegurarUsuariosDemo(): Promise<void> {
   const ahora = new Date().toISOString();
 
   const definiciones: Array<Omit<User, "id" | "passwordHash" | "createdAt">> = [
-    { tenantId, email: "admin@demo.test", name: "Duenio Demo", role: "owner", active: true },
+    { tenantId, email: "admin@demo.test", name: "Dueño Demo", role: "owner", active: true },
     { tenantId, email: "ana@demo.test", name: "Lic. Ana Torres", role: "employee", active: true, professionalId: "prof_1" },
     { tenantId, email: "martin@demo.test", name: "Lic. Martin Ruiz", role: "employee", active: true, professionalId: "prof_2" },
     { tenantId, email: "sofia@ejemplo.test", name: "Sofia Ramirez", role: "client", active: true, clientId: "cli_1" },
