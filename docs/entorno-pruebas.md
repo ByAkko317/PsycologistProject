@@ -171,6 +171,62 @@ notificación no puede llegar a tu máquina, así que el turno queda en
 `pending_payment` para siempre. No es un bug de la app: es que Mercado Pago no
 tiene forma de alcanzar tu `localhost`.
 
+#### El orden importa
+
+```bash
+# terminal 1 — dejala abierta
+ngrok http 3000
+
+# terminal 2
+pnpm tunel     # lee la URL de ngrok y la escribe en .env.local
+pnpm dev       # recién ahora
+```
+
+`pnpm tunel` consulta la API local de ngrok (`127.0.0.1:4040`), así que no hay
+que copiar nada a mano. Si usás otro túnel, pasale la URL:
+
+```bash
+pnpm tunel https://mi-dominio.trycloudflare.com
+```
+
+**`pnpm dev` va último, y hay que reiniciarlo si la URL cambia.** Las variables
+`NEXT_PUBLIC_*` se incrustan en el bundle al arrancar el servidor: editar
+`.env.local` con el servidor corriendo no alcanza.
+
+ngrok puede arrancar antes o después de la app —es solo un túnel— pero mientras
+no haya nada escuchando en el 3000 va a devolver `502 Bad Gateway`.
+
+#### Cada vez que ngrok cambia de URL
+
+En el plan gratuito la URL suele cambiar en cada reinicio. Cuando pasa, hay que
+tocar **dos** lugares:
+
+1. `pnpm tunel` + reiniciar `pnpm dev` (esto actualiza `.env.local`, y de ahí
+   sale también el origen autorizado para Server Actions).
+2. La URL del webhook en el panel de Mercado Pago.
+
+Si ngrok te ofrece un **dominio estático** en tu plan, usalo — te ahorra los dos
+pasos:
+
+```bash
+ngrok http 3000 --url=tu-dominio.ngrok-free.app
+```
+
+Verificá en tu panel de ngrok si lo tenés disponible; la política del plan
+gratuito cambió más de una vez.
+
+#### Por qué el login se rompe con un túnel (y ya está resuelto)
+
+Next 14 protege las Server Actions comparando la cabecera `Origin` contra
+`Host`/`X-Forwarded-Host`. Detrás de un túnel nunca coinciden: el navegador
+manda el dominio público y el servidor ve `localhost:3000`. Sin configurar nada,
+**todos** los formularios que usan Server Actions —login, registro, servicios,
+marca, equipo— fallan con `Invalid Server Actions request`, y el mensaje no dice
+nada sobre la causa real.
+
+`next.config.mjs` deriva el origen autorizado de `NEXT_PUBLIC_APP_URL`, así que
+alcanza con mantener esa variable al día. No hay que tocar la config.
+
 ```bash
 ngrok http 3000
 # copiá la URL https que te da

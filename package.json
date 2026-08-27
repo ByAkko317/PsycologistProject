@@ -15,7 +15,8 @@
     "mock:mercadopago": "node scripts/mock-mercadopago.mjs",
     "dev:sandbox": "node scripts/sandbox.mjs",
     "crear:usuario": "node scripts/crear-usuario.mjs",
-    "check:mercadopago": "node scripts/check-mercadopago.mjs"
+    "check:mercadopago": "node scripts/check-mercadopago.mjs",
+    "tunel": "node scripts/usar-tunel.mjs"
   },
   "dependencies": {
     "next": "14.2.15",

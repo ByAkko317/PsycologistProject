@@ -229,9 +229,17 @@ Mercado Pago y n8n necesitan poder llamar de vuelta a la app. Con el simulador
 esto no hace falta; contra el sandbox oficial sí:
 
 ```bash
-ngrok http 3000
-# poner esa URL en NEXT_PUBLIC_APP_URL
+ngrok http 3000    # terminal 1
+pnpm tunel         # terminal 2: escribe la URL en .env.local
+pnpm dev           # recién ahora
 ```
+
+`pnpm dev` va **último**: las variables `NEXT_PUBLIC_*` se incrustan al arrancar,
+así que editarlas con el servidor corriendo no alcanza.
+
+De `NEXT_PUBLIC_APP_URL` sale también el origen autorizado para las Server
+Actions (`next.config.mjs`). Sin eso, detrás de un túnel el login y todos los
+formularios del panel fallan con `Invalid Server Actions request`.
 
 O probar esa parte directamente sobre el deploy (Vercel).
 
@@ -265,6 +273,7 @@ Eventos emitidos:
 | `pnpm crear:usuario` | crea un usuario dueño o profesional |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
 | `pnpm check:mercadopago` | valida las credenciales de pago contra la API, sin cobrar |
+| `pnpm tunel` | toma la URL de ngrok y la deja configurada en `.env.local` |
 | `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
 | `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
 
