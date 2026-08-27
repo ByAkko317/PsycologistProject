@@ -30,7 +30,9 @@ if (existsSync(envPath)) {
 }
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
-const BASE_ID = process.env.AIRTABLE_BASE_ID;
+const BASE_ID = (process.env.AIRTABLE_BASE_ID || "")
+  .trim()
+  .replace(/^\/+|\/+$/g, "");
 const T_USERS = process.env.AIRTABLE_TABLE_USERS || "Users";
 const T_TENANTS = process.env.AIRTABLE_TABLE_TENANTS || "Tenants";
 

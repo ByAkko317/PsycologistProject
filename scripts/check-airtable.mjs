@@ -33,7 +33,9 @@ if (existsSync(envPath)) {
 }
 
 const API_KEY = (process.env.AIRTABLE_API_KEY ?? "").trim();
-const BASE_ID = (process.env.AIRTABLE_BASE_ID ?? "").trim();
+const BASE_ID_CRUDO = (process.env.AIRTABLE_BASE_ID ?? "").trim();
+// Sacar barras: pegar el ID desde la URL del navegador arrastra una final.
+const BASE_ID = BASE_ID_CRUDO.replace(/^\/+|\/+$/g, "");
 const PROVIDER = (process.env.NEXT_PUBLIC_DATA_PROVIDER ?? "").trim();
 
 const c = {
@@ -94,6 +96,18 @@ async function main() {
     );
     return terminar();
   }
+  // Avisar del saneamiento: si el valor de .env.local traía basura, es mejor
+  // que lo sepa y lo corrija, en vez de que el script lo tape en silencio.
+  if (BASE_ID !== BASE_ID_CRUDO) {
+    warn(
+      "El Base ID tenía caracteres de más y los ignoré",
+      `      en .env.local: "${BASE_ID_CRUDO}"\n` +
+        `      usando:        "${BASE_ID}"\n\n` +
+        "      Pasa al copiarlo de la barra del navegador, que arrastra la\n" +
+        "      barra final. La app lo tolera, pero conviene dejarlo limpio."
+    );
+  }
+
   if (!BASE_ID.startsWith("app")) {
     err(
       `AIRTABLE_BASE_ID no parece un Base ID: "${BASE_ID}"`,
@@ -102,6 +116,21 @@ async function main() {
     );
     return terminar();
   }
+
+  // Un Base ID de Airtable es "app" + 14 caracteres alfanuméricos. Chequearlo
+  // acá evita mandar una consulta condenada a devolver un 404 ambiguo.
+  if (!/^app[A-Za-z0-9]{14}$/.test(BASE_ID)) {
+    err(
+      `El Base ID tiene un formato raro: "${BASE_ID}" (${BASE_ID.length} caracteres)`,
+      "      Se espera 'app' seguido de 14 caracteres alfanuméricos, 17 en\n" +
+        "      total. Copiá solo esa parte de la URL:\n\n" +
+        "      https://airtable.com/appXXXXXXXXXXXXXX/tblYYYY.../viwZZZ...\n" +
+        "                           ^^^^^^^^^^^^^^^^^\n" +
+        "                           esto, sin la barra"
+    );
+    return terminar();
+  }
+
   ok("Base ID con formato válido", BASE_ID);
 
   if (PROVIDER && PROVIDER !== "airtable") {

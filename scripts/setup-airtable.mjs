@@ -32,7 +32,9 @@ if (existsSync(envPath)) {
 }
 
 const API_KEY = (process.env.AIRTABLE_API_KEY ?? "").trim();
-const BASE_ID = (process.env.AIRTABLE_BASE_ID ?? "").trim();
+const BASE_ID = (process.env.AIRTABLE_BASE_ID ?? "")
+  .trim()
+  .replace(/^\/+|\/+$/g, "");
 const APLICAR = process.argv.includes("--aplicar");
 
 const c = {

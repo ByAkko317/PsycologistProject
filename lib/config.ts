@@ -10,6 +10,18 @@ function env(key: string, fallback = ""): string {
 }
 
 /**
+ * Limpia un identificador copiado de una URL.
+ *
+ * El caso real: pegar el Base ID desde la barra del navegador arrastra una
+ * barra final ("appXXXX/"), y Airtable devuelve un 404 generico que parece
+ * "no existe la tabla". Se saca la barra en vez de fallar, porque el valor es
+ * correcto: solo viene con un caracter de mas.
+ */
+function envId(key: string): string {
+  return env(key).replace(/^\/+|\/+$/g, "").trim();
+}
+
+/**
  * Proveedor de datos activo. Si se pidio airtable/firebase pero faltan las
  * credenciales, se degrada a "mock" para que la app siga navegable.
  */
@@ -36,7 +48,7 @@ export const config = {
 
   airtable: {
     apiKey: env("AIRTABLE_API_KEY"),
-    baseId: env("AIRTABLE_BASE_ID"),
+    baseId: envId("AIRTABLE_BASE_ID"),
     tables: {
       tenants: env("AIRTABLE_TABLE_TENANTS", "Tenants"),
       services: env("AIRTABLE_TABLE_SERVICES", "Services"),
