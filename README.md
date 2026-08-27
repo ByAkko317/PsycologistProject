@@ -108,19 +108,25 @@ NEXT_PUBLIC_DATA_PROVIDER=airtable   # airtable | firebase | mock
 
 ### Configurar Airtable
 
-1. Crear un Base con 5 tablas: `Tenants`, `Services`, `Professionals`,
-   `Clients`, `Bookings`. Las columnas exactas están en
-   [`docs/airtable-schema.md`](docs/airtable-schema.md).
-2. Generar un token en <https://airtable.com/create/tokens> con permisos de
-   lectura/escritura sobre ese Base.
+1. Crear un Base vacío en Airtable y copiar su ID de la URL (empieza con `app`).
+2. Generar un token en <https://airtable.com/create/tokens> con los scopes
+   `data.records:read`, `data.records:write`, `schema.bases:read` y
+   `schema.bases:write`. En **Access**, seleccionar ese Base explícitamente.
 3. Completar `AIRTABLE_API_KEY` y `AIRTABLE_BASE_ID` en `.env.local`.
-4. Cargar los datos de ejemplo:
+4. Crear la estructura y cargar los datos:
 
 ```bash
-pnpm seed:airtable
+pnpm check:airtable            # qué falta y por qué
+pnpm setup:airtable --aplicar  # crea las 6 tablas y sus ~60 campos
+pnpm seed:airtable             # tenant, servicios y profesionales de ejemplo
+pnpm crear:usuario --email vos@consultorio.test --rol owner --nombre "Tu Nombre"
 ```
 
-Es idempotente: correrlo dos veces no duplica registros.
+Los cuatro son idempotentes: correrlos dos veces no duplica nada.
+
+> Si te aparece `Airtable 404 NOT_FOUND`, no significa "no hay datos": Airtable
+> responde eso también cuando el Base ID está mal o cuando el token no alcanza
+> ese Base. `pnpm check:airtable` distingue los tres casos.
 
 ---
 
@@ -269,6 +275,8 @@ Eventos emitidos:
 | `pnpm build` | build de producción |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
+| `pnpm check:airtable` | diagnostica la conexión y dice qué tablas o campos faltan |
+| `pnpm setup:airtable` | crea las tablas y campos que falten (`--aplicar` para ejecutar) |
 | `pnpm seed:airtable` | carga datos de ejemplo en Airtable |
 | `pnpm crear:usuario` | crea un usuario dueño o profesional |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |

@@ -34,11 +34,6 @@ const BASE_ID = process.env.AIRTABLE_BASE_ID;
 const T_USERS = process.env.AIRTABLE_TABLE_USERS || "Users";
 const T_TENANTS = process.env.AIRTABLE_TABLE_TENANTS || "Tenants";
 
-if (!API_KEY || !BASE_ID) {
-  console.error("Faltan AIRTABLE_API_KEY y/o AIRTABLE_BASE_ID en .env.local");
-  process.exit(1);
-}
-
 // --- argumentos --------------------------------------------------------------
 const args = process.argv.slice(2);
 const opt = (nombre) => {
@@ -52,19 +47,27 @@ const nombre = opt("nombre") || "";
 const profesionalId = opt("profesional");
 const tenantSlug = opt("tenant") || process.env.NEXT_PUBLIC_DEFAULT_TENANT || "demo";
 
-if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-  console.error("Falta --email o no es valido");
-  process.exit(1);
-}
-if (!["owner", "employee"].includes(rol)) {
-  console.error('--rol tiene que ser "owner" o "employee"');
-  process.exit(1);
-}
-if (rol === "employee" && !profesionalId) {
-  console.error(
-    "Un profesional necesita --profesional <recordId de la tabla Professionals>"
-  );
-  process.exit(1);
+/**
+ * Valida entorno y argumentos. Lanza con un mensaje util; el catch de main()
+ * lo imprime y marca exitCode. No usa process.exit() a proposito: forzar la
+ * salida con handles de red abiertos aborta Node en Windows.
+ */
+function validarEntrada() {
+  if (!API_KEY || !BASE_ID) {
+    throw new Error(
+      "Faltan AIRTABLE_API_KEY y/o AIRTABLE_BASE_ID en .env.local.\n" +
+        "  Para diagnosticar la configuración:  pnpm check:airtable"
+    );
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    throw new Error(
+      "Falta --email o no es válido.\n\n" +
+        '  pnpm crear:usuario --email tu@email.com --rol owner --nombre "Tu Nombre"'
+    );
+  }
+  if (!["owner", "employee"].includes(rol)) {
+    throw new Error('--rol tiene que ser "owner" o "employee".');
+  }
 }
 
 // --- airtable ----------------------------------------------------------------
@@ -77,7 +80,35 @@ async function at(path, init = {}) {
       ...(init.headers || {}),
     },
   });
-  if (!res.ok) throw new Error(`Airtable ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const cuerpo = await res.text();
+
+    // El 404 de Airtable es ambiguo a proposito: no distingue base inexistente
+    // de tabla inexistente de token sin acceso. Sin esta traduccion, el
+    // mensaje que llega es "404 NOT_FOUND" y no dice nada.
+    if (res.status === 404) {
+      throw new Error(
+        `Airtable no encontró la tabla o el Base.\n\n` +
+          `  Ruta consultada: ${path.split("?")[0]}\n` +
+          `  Base ID: ${BASE_ID}\n\n` +
+          `  Puede ser que la tabla no exista, que el Base ID esté mal, o que\n` +
+          `  el token no tenga acceso a ese Base. Para saber cuál:\n\n` +
+          `      pnpm check:airtable`
+      );
+    }
+    if (res.status === 401) {
+      throw new Error(
+        "Airtable rechazó el token (401). Está vencido o mal copiado."
+      );
+    }
+    if (res.status === 403) {
+      throw new Error(
+        `Al token le falta un permiso (403).\n  ${cuerpo}\n\n` +
+          "  Necesita: data.records:read y data.records:write."
+      );
+    }
+    throw new Error(`Airtable ${res.status}: ${cuerpo}`);
+  }
   return res.json();
 }
 
@@ -121,16 +152,29 @@ function preguntarOculto(pregunta) {
 }
 
 async function main() {
+  validarEntrada();
+
   const qs = new URLSearchParams({
     filterByFormula: `{slug} = "${tenantSlug}"`,
     maxRecords: "1",
   });
   const { records } = await at(`${encodeURIComponent(T_TENANTS)}?${qs}`);
   if (!records[0]) {
-    console.error(`No existe el tenant "${tenantSlug}". Corré antes: pnpm seed:airtable`);
-    process.exit(1);
+    throw new Error(
+      `No existe ningún tenant con slug "${tenantSlug}".\n\n` +
+        "  La tabla Tenants existe pero está vacía (o el slug no coincide).\n" +
+        "  Cargá los datos de ejemplo con:  pnpm seed:airtable"
+    );
   }
   const tenantId = records[0].id;
+
+  if (rol === "employee" && !profesionalId) {
+    console.log(
+      "\n  Aviso: no pasaste --profesional, así que este usuario va a entrar\n" +
+        "  pero no va a ver ninguna agenda hasta que se lo vincule desde\n" +
+        "  el panel → Equipo.\n"
+    );
+  }
 
   const yaExiste = await at(
     `${encodeURIComponent(T_USERS)}?${new URLSearchParams({
@@ -139,23 +183,17 @@ async function main() {
     })}`
   );
   if (yaExiste.records[0]) {
-    console.error(`Ya existe un usuario con el email ${email}`);
-    process.exit(1);
+    throw new Error(`Ya existe un usuario con el email ${email}.`);
   }
 
   console.log(`\n  Usuario nuevo para el tenant "${tenantSlug}"`);
   console.log(`  email: ${email}   rol: ${rol}\n`);
 
-  const pass1 = await preguntarOculto("  Contraseña (min 8): ");
-  if (pass1.length < 8) {
-    console.error("\n  Demasiado corta.");
-    process.exit(1);
-  }
+  const pass1 = await preguntarOculto("  Contraseña (mínimo 8): ");
+  if (pass1.length < 8) throw new Error("La contraseña es demasiado corta.");
+
   const pass2 = await preguntarOculto("  Repetila: ");
-  if (pass1 !== pass2) {
-    console.error("\n  No coinciden.");
-    process.exit(1);
-  }
+  if (pass1 !== pass2) throw new Error("Las contraseñas no coinciden.");
 
   const record = await at(encodeURIComponent(T_USERS), {
     method: "POST",
@@ -180,6 +218,8 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("\n  Fallo:", e.message);
-  process.exit(1);
+  console.error(`\n  ${e.message}\n`);
+  // exitCode en vez de process.exit(): con fetch en vuelo, forzar la salida
+  // hace que libuv aborte el proceso en Windows.
+  process.exitCode = 1;
 });

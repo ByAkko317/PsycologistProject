@@ -1,5 +1,50 @@
 # Esquema de Airtable
 
+> **Atajo: no hace falta crear nada a mano.**
+>
+> ```bash
+> pnpm check:airtable            # qué falta
+> pnpm setup:airtable --aplicar  # lo crea
+> pnpm seed:airtable             # datos de ejemplo
+> ```
+>
+> `setup:airtable` crea las tablas y campos desde la misma definición que usa
+> el código (`scripts/airtable-schema.mjs`), así que no puede haber diferencias
+> de nombre. Es incremental: solo agrega lo que falta, nunca borra ni modifica.
+> Necesita el scope `schema.bases:write` en el token.
+>
+> El resto de este documento describe el esquema para quien prefiera crearlo a
+> mano o quiera entender qué hay detrás.
+
+## Si te dio `404 NOT_FOUND`
+
+Airtable responde `404 {"error":"NOT_FOUND"}` en tres situaciones distintas y
+**no distingue entre ellas a propósito** (así no le confirma a un token ajeno
+que un Base existe):
+
+| Causa | Cómo se arregla |
+|---|---|
+| El Base ID está mal | Está en la URL del Base, empieza con `app`. Si copiaste algo que empieza con `tbl`, ese es el ID de una tabla |
+| El token no alcanza ese Base | En [airtable.com/create/tokens](https://airtable.com/create/tokens), sección **Access**, el Base tiene que estar seleccionado explícitamente |
+| La tabla no existe | `pnpm setup:airtable --aplicar` |
+
+`pnpm check:airtable` separa los tres casos y te dice cuál es.
+
+## Permisos del token
+
+| Scope | Para qué |
+|---|---|
+| `data.records:read` | leer turnos, servicios, pacientes |
+| `data.records:write` | crear y actualizar turnos |
+| `schema.bases:read` | que `check:airtable` pueda diagnosticar |
+| `schema.bases:write` | solo si querés que `setup:airtable` cree las tablas |
+
+En **Access**, elegí `Add a base` y seleccioná el Base del proyecto. No hace
+falta dar acceso a todo el workspace.
+
+---
+
+
 El proveedor `db.airtable.ts` espera **6 tablas** dentro de un mismo Base.
 Los nombres de tabla se pueden cambiar desde `.env.local`
 (`AIRTABLE_TABLE_*`), pero **los nombres de columna deben coincidir
