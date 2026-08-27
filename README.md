@@ -278,7 +278,7 @@ Eventos emitidos:
 | `pnpm check:airtable` | diagnostica la conexión y dice qué tablas o campos faltan |
 | `pnpm setup:airtable` | crea las tablas y campos que falten (`--aplicar` para ejecutar) |
 | `pnpm seed:airtable` | carga datos de ejemplo en Airtable |
-| `pnpm crear:usuario` | crea un usuario dueño o profesional |
+| `pnpm crear:usuario` | crea un usuario dueño o profesional (`--listar` para ver las fichas) |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
 | `pnpm check:mercadopago` | valida las credenciales de pago contra la API, sin cobrar |
 | `pnpm tunel` | toma la URL de ngrok y la deja configurada en `.env.local` |
@@ -371,9 +371,13 @@ Detalles que importan:
   respuesta es constante exista o no el email. Distinguir "ese email no existe"
   de "la contraseña está mal" permitiría averiguar quién es paciente del
   consultorio.
-- **No hay registro público de `owner` ni `employee`.** Se crean con
+- **No hay registro público de `owner` ni `employee`.** El primero se crea con
   `pnpm crear:usuario`, que pide la contraseña por consola para que no quede en
-  el historial de la terminal.
+  el historial de la terminal. Después, desde **`/admin/equipo`**.
+- **Ficha de profesional ≠ usuario.** La ficha (`Professionals`) es a quién se
+  le puede reservar; el usuario (`Users`) son las credenciales para entrar.
+  `pnpm seed:airtable` crea fichas pero **no** usuarios: hacerlo implicaría
+  poner contraseñas conocidas en una base real.
 
 `AUTH_SECRET` es obligatorio en producción: sin él la app no arranca. En
 desarrollo genera uno efímero y avisa.
