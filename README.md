@@ -211,8 +211,17 @@ Tres formas de probar el cobro, de menos a más fiel:
 | **Sandbox oficial** | credenciales `TEST-` + ngrok | antes de deployar |
 | **Producción** | credenciales `APP_USR-` | plata real |
 
-La app detecta el prefijo del Access Token y manda al checkout que corresponde.
-Paso a paso de las tres: [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
+El entorno lo decide la credencial: con un token `TEST-`, el `init_point` que
+devuelve Mercado Pago ya apunta al sandbox.
+
+`MERCADOPAGO_API_BASE` **no es una credencial** — es el desvío al simulador
+local. Con credenciales reales va vacía.
+
+```bash
+pnpm check:mercadopago    # valida todo antes de probar, sin cobrar nada
+```
+
+Paso a paso de las tres formas: [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
 
 ### Webhooks entrantes y URL pública
 
@@ -255,6 +264,7 @@ Eventos emitidos:
 | `pnpm seed:airtable` | carga datos de ejemplo en Airtable |
 | `pnpm crear:usuario` | crea un usuario dueño o profesional |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
+| `pnpm check:mercadopago` | valida las credenciales de pago contra la API, sin cobrar |
 | `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
 | `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
 

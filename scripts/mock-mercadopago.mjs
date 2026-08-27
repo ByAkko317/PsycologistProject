@@ -236,6 +236,17 @@ const servidor = createServer(async (req, res) => {
   const url = new URL(req.url, BASE);
   const ruta = url.pathname;
 
+  // Datos de la cuenta. Lo consulta pnpm check:mercadopago para validar el
+  // token; el simulador acepta cualquiera y responde una cuenta argentina.
+  if (req.method === "GET" && ruta === "/users/me") {
+    return json(res, 200, {
+      id: 999999999,
+      nickname: "SIMULADOR",
+      site_id: "MLA",
+      email: "simulador@turnos.test",
+    });
+  }
+
   // Crear preferencia (paso 5)
   if (req.method === "POST" && ruta === "/checkout/preferences") {
     const body = JSON.parse((await leerBody(req)) || "{}");

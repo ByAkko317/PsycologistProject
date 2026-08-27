@@ -79,7 +79,23 @@ error de tarjetas específicas.
 
 ## Pasar al sandbox oficial de Mercado Pago
 
-Cuando quieras probar contra la infraestructura real (sin mover plata):
+Cuando quieras probar contra la infraestructura real (sin mover plata).
+
+> **`MERCADOPAGO_API_BASE` no es una credencial de Mercado Pago.** No se saca de
+> ningún panel. Es un desvío interno para apuntar la app al simulador local.
+> Con credenciales reales tiene que quedar **vacía**; si la dejás apuntando al
+> simulador, tus credenciales no se usan y vas a estar probando el simulador
+> otra vez sin darte cuenta.
+
+Antes de empezar, y después de cada cambio:
+
+```bash
+pnpm check:mercadopago
+```
+
+Valida el token contra la API real, avisa si mezclaste entornos, chequea que la
+moneda de tu cuenta coincida con la del tenant, crea una preferencia de prueba
+y te dice si el webhook va a poder llegar. No cobra nada.
 
 ### 1. Crear la aplicación
 
@@ -96,15 +112,20 @@ Dentro de la aplicación → **Credenciales de prueba**:
 ```env
 MERCADOPAGO_ACCESS_TOKEN=TEST-1234567890...
 NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=TEST-abcd-...
-MERCADOPAGO_API_BASE=            # vacío = API real
+MERCADOPAGO_API_BASE=            # ← vacía: es lo correcto con credenciales reales
 ```
 
 > Si el token empieza con `APP_USR-` son **credenciales de producción** y los
 > pagos son reales. Para probar tiene que empezar con `TEST-`.
 
-La app detecta el prefijo sola y manda al checkout de sandbox
-(`sandbox_init_point`). Mezclarlos es lo que produce el clásico
-"Algo salió mal" de Mercado Pago.
+**Las dos credenciales tienen que ser del mismo par.** Un token `TEST-` con una
+Public Key `APP_USR-` (o al revés) es lo que produce el clásico "Algo salió mal"
+de Mercado Pago. `pnpm check:mercadopago` lo detecta.
+
+El entorno lo decide la credencial, no la URL: con un token `TEST-`, el
+`init_point` que devuelve Mercado Pago **ya apunta al sandbox**. Por eso la app
+usa siempre `init_point` y deja `sandbox_init_point` solo como respaldo — es el
+flujo viejo.
 
 ### 3. Crear usuarios de prueba
 
@@ -140,10 +161,15 @@ DNI: `12345678`.
 > Verificá en <https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/your-integrations/test/cards>
 > si alguno deja de funcionar.
 
-### 5. URL pública para el webhook
+### 5. URL pública para el webhook — **el paso que suele olvidarse**
 
-Este es el punto donde el simulador te ahorraba trabajo: Mercado Pago real
-necesita poder llamar a tu máquina.
+Este es el punto donde el simulador te ahorraba trabajo, y el que más veces
+deja el flujo a medias: **con `localhost` el cobro nunca se confirma**.
+
+El checkout va a abrir bien y el pago se va a acreditar en Mercado Pago, pero la
+notificación no puede llegar a tu máquina, así que el turno queda en
+`pending_payment` para siempre. No es un bug de la app: es que Mercado Pago no
+tiene forma de alcanzar tu `localhost`.
 
 ```bash
 ngrok http 3000
