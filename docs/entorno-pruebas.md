@@ -171,35 +171,72 @@ notificación no puede llegar a tu máquina, así que el turno queda en
 `pending_payment` para siempre. No es un bug de la app: es que Mercado Pago no
 tiene forma de alcanzar tu `localhost`.
 
-#### El orden importa
+#### Antes hay que instalar un túnel
+
+Ninguno viene con el sistema. Hay dos opciones y conviene la primera:
+
+| | Cuenta | Instalación |
+|---|---|---|
+| **Cloudflare Tunnel** | **no necesita** | `winget install --id Cloudflare.cloudflared` |
+| ngrok | sí, gratuita + authtoken | `winget install --id ngrok.ngrok` |
+
+Cloudflare da una URL `*.trycloudflare.com` con un solo comando y sin registrarse.
+Para una prueba puntual es el camino más corto. La contra: no tiene garantía de
+uptime y la URL cambia siempre.
+
+Si `winget` no encuentra el paquete, los binarios están en
+[releases de cloudflared](https://github.com/cloudflare/cloudflared/releases) y
+[descarga de ngrok](https://ngrok.com/download/windows).
+
+#### Con Cloudflare (recomendado para probar)
 
 ```bash
-# terminal 1 — dejala abierta
-ngrok http 3000
+# terminal 1 — queda abierta mientras dure la prueba
+pnpm tunel --cloudflare
 
 # terminal 2
-pnpm tunel     # lee la URL de ngrok y la escribe en .env.local
-pnpm dev       # recién ahora
+pnpm dev
 ```
 
-`pnpm tunel` consulta la API local de ngrok (`127.0.0.1:4040`), así que no hay
-que copiar nada a mano. Si usás otro túnel, pasale la URL:
+`pnpm tunel --cloudflare` levanta el túnel, lee la URL de su salida y la escribe
+en `.env.local` solo. El túnel vive mientras esa terminal esté abierta.
+
+#### Con ngrok
+
+Requiere registrarse y configurar el authtoken una vez:
 
 ```bash
-pnpm tunel https://mi-dominio.trycloudflare.com
+ngrok config add-authtoken TU_TOKEN    # de dashboard.ngrok.com
 ```
+
+Después:
+
+```bash
+ngrok http 3000    # terminal 1
+pnpm tunel         # terminal 2: lee la URL de la API local de ngrok
+pnpm dev           # terminal 2
+```
+
+#### Si ya tenés una URL
+
+```bash
+pnpm tunel https://mi-dominio.com
+```
+
+Y si corrés `pnpm tunel` sin nada, te dice cuál de los dos tenés instalado y
+qué comando usar.
 
 **`pnpm dev` va último, y hay que reiniciarlo si la URL cambia.** Las variables
 `NEXT_PUBLIC_*` se incrustan en el bundle al arrancar el servidor: editar
 `.env.local` con el servidor corriendo no alcanza.
 
-ngrok puede arrancar antes o después de la app —es solo un túnel— pero mientras
-no haya nada escuchando en el 3000 va a devolver `502 Bad Gateway`.
+El túnel puede arrancar antes o después de la app —es solo un reenvío— pero
+mientras no haya nada escuchando en el 3000 va a devolver `502 Bad Gateway`.
 
-#### Cada vez que ngrok cambia de URL
+#### Cada vez que el túnel cambia de URL
 
-En el plan gratuito la URL suele cambiar en cada reinicio. Cuando pasa, hay que
-tocar **dos** lugares:
+Con Cloudflare cambia siempre; con ngrok gratuito, en cada reinicio. Cuando pasa,
+hay que tocar **dos** lugares:
 
 1. `pnpm tunel` + reiniciar `pnpm dev` (esto actualiza `.env.local`, y de ahí
    sale también el origen autorizado para Server Actions).

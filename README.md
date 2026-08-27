@@ -234,11 +234,19 @@ Paso a paso de las tres formas: [`docs/entorno-pruebas.md`](docs/entorno-pruebas
 Mercado Pago y n8n necesitan poder llamar de vuelta a la app. Con el simulador
 esto no hace falta; contra el sandbox oficial sí:
 
+Hace falta un túnel instalado. El más corto es Cloudflare, que **no pide
+cuenta**:
+
 ```bash
-ngrok http 3000    # terminal 1
-pnpm tunel         # terminal 2: escribe la URL en .env.local
-pnpm dev           # recién ahora
+winget install --id Cloudflare.cloudflared   # una sola vez
+
+pnpm tunel --cloudflare   # terminal 1: levanta el túnel y escribe la URL
+pnpm dev                  # terminal 2
 ```
+
+Con ngrok (requiere cuenta y authtoken) el flujo es `ngrok http 3000` en una
+terminal y `pnpm tunel` en otra. Corriendo `pnpm tunel` sin argumentos te dice
+qué tenés instalado.
 
 `pnpm dev` va **último**: las variables `NEXT_PUBLIC_*` se incrustan al arrancar,
 así que editarlas con el servidor corriendo no alcanza.
@@ -281,7 +289,7 @@ Eventos emitidos:
 | `pnpm crear:usuario` | crea un usuario dueño o profesional (`--listar` para ver las fichas) |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
 | `pnpm check:mercadopago` | valida las credenciales de pago contra la API, sin cobrar |
-| `pnpm tunel` | toma la URL de ngrok y la deja configurada en `.env.local` |
+| `pnpm tunel` | expone la app en una URL pública y la configura (`--cloudflare` para levantarlo) |
 | `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
 | `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
 
