@@ -45,7 +45,7 @@ falta dar acceso a todo el workspace.
 ---
 
 
-El proveedor `db.airtable.ts` espera **6 tablas** dentro de un mismo Base.
+El proveedor `db.airtable.ts` espera **7 tablas** dentro de un mismo Base.
 Los nombres de tabla se pueden cambiar desde `.env.local`
 (`AIRTABLE_TABLE_*`), pero **los nombres de columna deben coincidir
 exactamente** con los de abajo (Airtable distingue mayusculas).
@@ -201,6 +201,29 @@ historial de la terminal.
 Los pacientes se registran solos en `/registro`. Si ya habian reservado con ese
 email, la cuenta se enlaza al registro existente de `Clients` y ven su historial
 completo.
+
+---
+
+## 7. `Notes`
+
+Notas clínicas por paciente, con marca de tiempo y autor.
+
+| Columna | Tipo Airtable | Notas |
+|---|---|---|
+| `createdAt` | Single line text | ISO 8601. Es el campo primario |
+| `tenantId` | Single line text | |
+| `clientId` | Single line text | Record ID de `Clients` |
+| `authorUserId` | Single line text | Record ID de `Users`. **Define quién puede leerla** |
+| `authorName` | Single line text | Se guarda además del id: si el usuario se da de baja, la nota sigue diciendo quién la firmó |
+| `bookingId` | Single line text | Turno en cuyo contexto se escribió, opcional |
+| `body` | Long text | |
+
+> **Esta tabla contiene datos de salud.** Restringí sus permisos en Airtable con
+> más cuidado que ninguna: quien la lee accede a la historia clínica completa
+> del consultorio, sin pasar por las reglas de la app.
+
+Las notas son **inmutables**: la app no las edita ni las borra. Una historia
+clínica que se puede reescribir sin dejar rastro no sirve como registro.
 
 ---
 

@@ -144,6 +144,21 @@ export const ESQUEMA = [
     ],
   },
   {
+    tabla: "Notes",
+    envVar: "AIRTABLE_TABLE_NOTES",
+    descripcion:
+      "Notas clínicas por paciente. Contiene datos de salud: restringí los permisos de esta tabla.",
+    campos: [
+      texto("createdAt"),
+      texto("tenantId"),
+      texto("clientId"),
+      texto("authorUserId"),
+      texto("authorName"),
+      texto("bookingId"),
+      largo("body"),
+    ],
+  },
+  {
     tabla: "Users",
     envVar: "AIRTABLE_TABLE_USERS",
     descripcion:

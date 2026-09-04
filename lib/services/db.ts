@@ -11,7 +11,9 @@ import type {
   BookingDetail,
   BookingFilters,
   Client,
+  ClinicalNote,
   CreateBookingInput,
+  CreateNoteInput,
   CreateUserInput,
   Professional,
   Service,
@@ -64,6 +66,11 @@ export interface DataClient {
     bookingId: string,
     patch: UpdateBookingInput
   ): Promise<Booking>;
+
+  // --- Notas clinicas ---
+  /** Notas de un paciente, de la mas reciente a la mas vieja. */
+  listNotes(tenantId: string, clientId: string): Promise<ClinicalNote[]>;
+  createNote(tenantId: string, input: CreateNoteInput): Promise<ClinicalNote>;
 
   // --- Usuarios y autenticacion ---
   /** Busca por email dentro del tenant. Devuelve el User COMPLETO (con hash). */

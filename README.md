@@ -139,6 +139,7 @@ app/
   portal/               cancelar / reprogramar (paso 10)
   employee/agenda/      agenda del profesional (paso 11)
   admin/                panel del dueño
+  pacientes/            listado y ficha, compartidos por profesional y admin
   api/
     catalog/            catálogo público (marca, servicios, profesionales)
     availability/       horarios libres calculados en el servidor (paso 3)
@@ -157,6 +158,9 @@ lib/
     session.ts          cookie firmada, sin estado en el servidor
     guards.ts           requireSession para páginas, APIs y server actions
   services/
+    agenda.ts           turnos: alcance por rol, búsqueda y paginado
+    patients.ts         pacientes y notas: alcance por rol, búsqueda y paginado
+    serializar.ts       qué datos cruzan al navegador
     auth.ts             login, registro y alta de usuarios del equipo
     db.ts               punto ÚNICO de acceso a datos
     db.airtable.ts      implementación Airtable (REST, sin SDK)
@@ -351,7 +355,12 @@ la UI esconde pero el endpoint sigue aceptando.
 | Ver su agenda del día | — | ✅ | ✅ |
 | Marcar asistencia | — | ✅ | ✅ |
 | Ver importes y estado de pago | — | ❌ | ✅ |
-| Ver la ficha de cualquier paciente | — | ❌ | ✅ |
+| Ver la ficha de los pacientes que atendió | — | ✅ | ✅ |
+| Ver la ficha de **cualquier** paciente | — | ❌ | ✅ |
+| Escribir notas clínicas | — | ✅ | ✅ |
+| Leer las notas que escribió | — | ✅ | ✅ |
+| Leer las notas de **otro** profesional | — | ❌ | ✅ |
+| Corregir a mano el estado de un pago | — | ❌ | ✅ |
 | Cancelar o mover cualquier turno | — | ❌ | ✅ |
 | Editar servicios, precios y marca | — | ❌ | ✅ |
 | Alta y baja de usuarios del equipo | — | ❌ | ✅ |
@@ -362,6 +371,16 @@ trabajo: ve a quién atiende y registra si vino. No ve importes —saber si el
 paciente pagó puede condicionar el trato y no hace a su tarea— y no cancela ni
 reprograma, porque eso tiene consecuencias sobre el cobro y sobre la otra
 persona. Es una decisión de la administración.
+
+**Las notas clínicas siguen su propia regla.** Cada profesional lee solo las
+que escribió; la administración las lee todas, porque es la responsable legal
+de la historia clínica. Un profesional no lee lo que anotó otro sobre el mismo
+paciente: en salud mental el registro es parte del vínculo terapéutico, no del
+expediente común. Y son **inmutables** — no se editan ni se borran.
+
+**El alcance de pacientes se deriva de los turnos.** Un profesional accede a la
+ficha de alguien solo si tuvo al menos un turno con esa persona. El cruce se
+hace contra su agenda, nunca contra un id de la URL.
 
 Detalles que importan:
 

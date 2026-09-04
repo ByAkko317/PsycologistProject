@@ -29,7 +29,13 @@ export type Capability =
   | "bookings:manage:all" // cancelar o mover cualquiera
   // --- Datos sensibles ---
   | "money:view" // precios, importes, ingresos
-  | "clients:view:all" // ficha y contacto de todos los pacientes
+  | "payments:manage" // corregir a mano el estado de un pago
+  | "clients:view:all" // ficha de cualquier paciente del negocio
+  | "clients:view:attended" // ficha solo de los pacientes que atendio
+  // --- Notas clinicas ---
+  | "notes:write"
+  | "notes:read:own" // solo las que escribio uno mismo
+  | "notes:read:all" // todas las del paciente
   // --- Configuración del negocio ---
   | "services:manage"
   | "branding:manage"
@@ -53,7 +59,13 @@ const MATRIZ: Record<UserRole, Capability[]> = {
     "bookings:reschedule:own",
   ],
 
-  employee: ["bookings:view:assigned", "bookings:attendance"],
+  employee: [
+    "bookings:view:assigned",
+    "bookings:attendance",
+    "clients:view:attended",
+    "notes:write",
+    "notes:read:own",
+  ],
 
   owner: [
     "bookings:view:all",
@@ -62,7 +74,12 @@ const MATRIZ: Record<UserRole, Capability[]> = {
     "bookings:attendance",
     "bookings:manage:all",
     "money:view",
+    "payments:manage",
     "clients:view:all",
+    "clients:view:attended",
+    "notes:write",
+    "notes:read:own",
+    "notes:read:all",
     "services:manage",
     "branding:manage",
     "team:manage",
@@ -103,11 +120,14 @@ const NAV: Record<UserRole, NavItem[]> = {
     { href: "/portal", label: "Mis turnos" },
     { href: "/book", label: "Reservar" },
   ],
-  employee: [{ href: "/employee/agenda", label: "Mi agenda" }],
+  employee: [
+    { href: "/employee/agenda", label: "Mi agenda" },
+    { href: "/pacientes", label: "Pacientes", requires: "clients:view:attended" },
+  ],
   owner: [
     { href: "/admin", label: "Resumen" },
     { href: "/admin/agenda", label: "Agenda" },
-    { href: "/admin/clientes", label: "Pacientes" },
+    { href: "/pacientes", label: "Pacientes" },
     { href: "/admin/servicios", label: "Servicios" },
     { href: "/admin/equipo", label: "Equipo" },
     { href: "/admin/marca", label: "Marca" },
@@ -120,6 +140,23 @@ export function navFor(sesion: SessionPayload | null | undefined): NavItem[] {
   return NAV[sesion.role].filter(
     (i) => !i.requires || roleCan(sesion.role, i.requires)
   );
+}
+
+/**
+ * Regla de lectura de notas clinicas.
+ *
+ * Cada profesional lee solo las que escribio; la administracion lee todas,
+ * porque es la responsable legal de la historia clinica. Un profesional no
+ * lee lo que anoto otro sobre el mismo paciente: en salud mental el registro
+ * es parte del vinculo terapeutico, no del expediente comun.
+ */
+export function puedeLeerNota(
+  sesion: SessionPayload | null | undefined,
+  autorUserId: string
+): boolean {
+  if (!sesion) return false;
+  if (roleCan(sesion.role, "notes:read:all")) return true;
+  return roleCan(sesion.role, "notes:read:own") && sesion.uid === autorUserId;
 }
 
 /** Etiqueta legible del rol, para mostrar junto al nombre. */

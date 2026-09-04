@@ -14,6 +14,7 @@ import type {
   CreateBookingInput,
   Professional,
   Service,
+  ClinicalNote,
   Tenant,
   UpdateBookingInput,
   User,
@@ -39,6 +40,7 @@ interface Store {
   clients: Client[];
   bookings: Booking[];
   users: User[];
+  notes: ClinicalNote[];
 }
 
 function seed(): Store {
@@ -203,7 +205,7 @@ function seed(): Store {
   // asegurarUsuariosDemo): no se hardcodea un hash en el repo.
   const users: User[] = [];
 
-  return { tenants, services, professionals, clients, bookings, users };
+  return { tenants, services, professionals, clients, bookings, users, notes: [] };
 }
 
 /**
@@ -461,6 +463,29 @@ export const mockClient: DataClient = {
     if (!booking) throw new Error(`Turno no encontrado: ${bookingId}`);
     Object.assign(booking, patch, { updatedAt: new Date().toISOString() });
     return booking;
+  },
+
+  async listNotes(tenantId, clientId) {
+    const tenant = requireTenant(tenantId);
+    return store.notes
+      .filter((n) => n.tenantId === tenant.id && n.clientId === clientId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async createNote(tenantId, input) {
+    const tenant = requireTenant(tenantId);
+    const nota: ClinicalNote = {
+      id: uid("note"),
+      tenantId: tenant.id,
+      clientId: input.clientId,
+      authorUserId: input.authorUserId,
+      authorName: input.authorName,
+      bookingId: input.bookingId,
+      body: input.body,
+      createdAt: new Date().toISOString(),
+    };
+    store.notes.push(nota);
+    return nota;
   },
 
   async getUserByEmail(tenantId, email) {

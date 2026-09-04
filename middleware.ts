@@ -15,7 +15,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const COOKIE_NAME = "turnos_session";
 
 /** Rutas que exigen sesion. /portal queda afuera: acepta acceso por token. */
-const PRIVADAS = ["/admin", "/employee"];
+const PRIVADAS = ["/admin", "/employee", "/pacientes"];
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -34,5 +34,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/employee/:path*"],
+  matcher: ["/admin/:path*", "/employee/:path*", "/pacientes/:path*"],
 };

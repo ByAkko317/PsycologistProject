@@ -119,6 +119,40 @@ export interface CreateUserInput {
   active?: boolean;
 }
 
+/**
+ * Nota clínica sobre un paciente.
+ *
+ * Va en su propia tabla y no como texto dentro de Clients por dos razones:
+ * cada nota necesita su propia marca de tiempo y su autor, y un campo de texto
+ * que se va concatenando no permite saber quién escribió qué ni filtrar por
+ * autor — que es justo lo que exige la regla de privacidad.
+ *
+ * Es inmutable a propósito: no se edita ni se borra. Una historia clínica que
+ * se puede reescribir sin dejar rastro no sirve como registro.
+ */
+export interface ClinicalNote {
+  id: string;
+  tenantId: string;
+  clientId: string;
+  /** Usuario que la escribió. Define quién puede leerla. */
+  authorUserId: string;
+  /** Se guarda el nombre además del id: si el usuario se da de baja, la nota
+   *  sigue diciendo quién la firmó. */
+  authorName: string;
+  /** Turno en el contexto del cual se escribió, si aplica. */
+  bookingId?: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface CreateNoteInput {
+  clientId: string;
+  authorUserId: string;
+  authorName: string;
+  body: string;
+  bookingId?: string;
+}
+
 export type BookingStatus =
   | "pending_payment"
   | "confirmed"

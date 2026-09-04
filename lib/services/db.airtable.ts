@@ -12,6 +12,7 @@ import type {
   Booking,
   Client,
   Professional,
+  ClinicalNote,
   Service,
   Tenant,
   User,
@@ -197,6 +198,20 @@ function toClient(r: AirtableRecord): Client {
     email: str(f.email) || undefined,
     phone: str(f.phone) || undefined,
     notes: str(f.notes) || undefined,
+    createdAt: str(f.createdAt, r.createdTime),
+  };
+}
+
+function toNote(r: AirtableRecord): ClinicalNote {
+  const f = r.fields;
+  return {
+    id: r.id,
+    tenantId: str(f.tenantId),
+    clientId: str(f.clientId),
+    authorUserId: str(f.authorUserId),
+    authorName: str(f.authorName, "Desconocido"),
+    bookingId: str(f.bookingId) || undefined,
+    body: str(f.body),
     createdAt: str(f.createdAt, r.createdTime),
   };
 }
@@ -502,6 +517,34 @@ export const airtableClient: DataClient = {
       (k) => fields[k] === undefined && delete fields[k]
     );
     return toBooking(await updateRecord(T.bookings, bookingId, fields));
+  },
+
+  async listNotes(tenantId, clientId) {
+    const id = await requireTenantId(tenantId);
+    const records = await listAll(T.notes, {
+      filterByFormula: andFormula(
+        eqFormula("tenantId", id),
+        eqFormula("clientId", clientId)
+      ),
+    });
+    return records
+      .map(toNote)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async createNote(tenantId, input) {
+    const id = await requireTenantId(tenantId);
+    return toNote(
+      await createRecord(T.notes, {
+        tenantId: id,
+        clientId: input.clientId,
+        authorUserId: input.authorUserId,
+        authorName: input.authorName,
+        bookingId: input.bookingId ?? "",
+        body: input.body,
+        createdAt: new Date().toISOString(),
+      })
+    );
   },
 
   async getUserByEmail(tenantId, email) {

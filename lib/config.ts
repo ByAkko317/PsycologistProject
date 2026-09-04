@@ -56,6 +56,7 @@ export const config = {
       clients: env("AIRTABLE_TABLE_CLIENTS", "Clients"),
       bookings: env("AIRTABLE_TABLE_BOOKINGS", "Bookings"),
       users: env("AIRTABLE_TABLE_USERS", "Users"),
+      notes: env("AIRTABLE_TABLE_NOTES", "Notes"),
     },
   },
 
