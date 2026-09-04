@@ -114,15 +114,29 @@ async function main() {
     ok("Public Key del mismo entorno que el token");
   }
 
-  if (API_BASE) {
+  if (!API_BASE) {
+    ok("MERCADOPAGO_API_BASE vacía", "usa la API real, que es lo correcto");
+  } else if (!/^https?:\/\//.test(API_BASE)) {
+    // Este chequeo existe por un bug real: la app leía la variable con `??`,
+    // así que un `MERCADOPAGO_API_BASE=` vacío NO caía al default y la URL
+    // quedaba relativa ("/checkout/preferences" → ERR_INVALID_URL). Este
+    // script usaba `||` y por eso pasaba con 0 fallas mientras la app rompía.
+    // La causa ya está corregida en lib/config.ts; esto queda de red.
+    err(
+      `MERCADOPAGO_API_BASE no es una URL absoluta: "${API_BASE}"`,
+      "Tiene que empezar con http:// o https://, o quedar vacía."
+    );
+  } else if (API_BASE.includes("localhost") || API_BASE.includes("127.0.0.1")) {
     warn(
-      `MERCADOPAGO_API_BASE apunta a ${API_BASE}`,
-      API_BASE.includes("localhost")
-        ? "Estás usando el SIMULADOR local: tus credenciales reales no se usan.\n      Para probar contra Mercado Pago de verdad, dejá esta variable vacía."
-        : "Solo debería tener valor si estás usando el simulador local."
+      `MERCADOPAGO_API_BASE apunta al simulador (${API_BASE})`,
+      "Tus credenciales reales no se usan.\n" +
+        "      Para probar contra Mercado Pago de verdad, dejá esta variable vacía."
     );
   } else {
-    ok("MERCADOPAGO_API_BASE vacía", "usa la API real, que es lo correcto");
+    warn(
+      `MERCADOPAGO_API_BASE apunta a ${API_BASE}`,
+      "Solo debería tener valor si estás usando el simulador local."
+    );
   }
 
   // --- 2. Token válido ------------------------------------------------------

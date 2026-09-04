@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { config } from "@/lib/config";
+import { API_MERCADOPAGO, config } from "@/lib/config";
 import type { Booking, Service, Tenant } from "@/lib/types";
 
 export interface PaymentPreference {
@@ -43,7 +43,18 @@ export function isSandbox(): boolean {
 }
 
 async function mpFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${config.mercadopago.apiBase}${path}`, {
+  // Si apiBase quedara vacio o relativo, fetch tira "Failed to parse URL",
+  // que no dice cual es la variable culpable. Se nombra explicitamente.
+  const base = config.mercadopago.apiBase;
+  if (!/^https?:\/\//.test(base)) {
+    throw new Error(
+      `MERCADOPAGO_API_BASE tiene un valor invalido: "${base}". ` +
+        `Dejala vacia para usar ${API_MERCADOPAGO}, o poné la URL completa ` +
+        `del simulador (http://localhost:4010).`
+    );
+  }
+
+  const res = await fetch(`${base}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${config.mercadopago.accessToken}`,

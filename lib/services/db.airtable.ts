@@ -49,9 +49,38 @@ async function request<T>(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Airtable ${res.status} en ${path}: ${body}`);
+    throw new Error(explicarError(res.status, path, body));
   }
   return (await res.json()) as T;
+}
+
+/**
+ * Traduce los errores de Airtable a algo accionable.
+ *
+ * Airtable usa el mismo par de codigos para causas muy distintas: un 403
+ * INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND puede ser "la tabla no existe" o "tu
+ * token no la puede leer", y no lo aclara a proposito (decirlo confirmaria la
+ * existencia de una tabla a un token ajeno). Es defendible de su parte, pero
+ * deja al desarrollador mirando un 403 sin saber si el problema es el esquema
+ * o el permiso. Se listan las dos causas y el comando que descarta la primera.
+ */
+function explicarError(status: number, path: string, body: string): string {
+  const tabla = decodeURIComponent(path.split("?")[0].split("/")[0] ?? "");
+  const crudo = `Airtable ${status} en ${path}: ${body}`;
+
+  const noEncontrado =
+    status === 404 || body.includes("INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND");
+  if (!noEncontrado) return crudo;
+
+  return (
+    `${crudo}\n\n` +
+    `  La tabla "${tabla}" no respondio. Suele ser una de dos cosas:\n\n` +
+    `    a) La tabla no existe todavia en el Base. Pasa al agregar una tabla\n` +
+    `       nueva al proyecto sobre un Base creado antes. Se arregla con:\n` +
+    `           pnpm setup:airtable --aplicar\n\n` +
+    `    b) El token no tiene acceso a esa tabla o al Base entero.\n\n` +
+    `  Para saber cual de las dos es:  pnpm check:airtable`
+  );
 }
 
 /** Lista todos los registros de una tabla, paginando hasta el final. */

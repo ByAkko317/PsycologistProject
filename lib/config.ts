@@ -5,8 +5,25 @@
 
 export type DataProvider = "airtable" | "firebase" | "mock";
 
+/** API productiva de Mercado Pago. Es el default de MERCADOPAGO_API_BASE. */
+export const API_MERCADOPAGO = "https://api.mercadopago.com";
+
+/**
+ * Lee una variable de entorno, tratando el string vacio como "no configurada".
+ *
+ * La distincion importa: en un .env, `FOO=` deja `process.env.FOO === ""`, que
+ * NO es undefined. Con `??` el fallback no se aplica y el valor vacio se
+ * propaga. Eso rompio el checkout: .env.example trae `MERCADOPAGO_API_BASE=`
+ * con la instruccion de dejarla vacia, apiBase quedaba en "" y la URL
+ * terminaba siendo la relativa "/checkout/preferences", que fetch rechaza con
+ * ERR_INVALID_URL.
+ *
+ * Ninguna variable de este archivo tiene el vacio como valor significativo:
+ * vacio siempre quiere decir "usa el default".
+ */
 function env(key: string, fallback = ""): string {
-  return (process.env[key] ?? fallback).trim();
+  const valor = (process.env[key] ?? "").trim();
+  return valor === "" ? fallback : valor;
 }
 
 /**
@@ -68,20 +85,24 @@ export const config = {
      * Base de la API. Se cambia solo para apuntar al simulador local
      * (scripts/mock-mercadopago.mjs) y poder probar el cobro sin cuenta.
      */
-    apiBase: env("MERCADOPAGO_API_BASE", "https://api.mercadopago.com").replace(
-      /\/$/,
-      ""
-    ),
+    apiBase: env("MERCADOPAGO_API_BASE", API_MERCADOPAGO).replace(/\/$/, ""),
     get enabled() {
       return Boolean(env("MERCADOPAGO_ACCESS_TOKEN"));
     },
-    /** True si las credenciales son de prueba (sandbox). */
+    /**
+     * True si no se mueve plata real: credenciales TEST- o simulador local.
+     *
+     * Se compara contra la API productiva en vez de preguntar si la variable
+     * tiene algo. Escribir la URL real a mano es redundante pero valido, y no
+     * deberia hacer creer al panel que esta en modo prueba.
+     */
     get isSandbox() {
       const token = env("MERCADOPAGO_ACCESS_TOKEN");
-      return (
-        token.startsWith("TEST-") ||
-        Boolean(env("MERCADOPAGO_API_BASE"))
+      const base = env("MERCADOPAGO_API_BASE", API_MERCADOPAGO).replace(
+        /\/$/,
+        ""
       );
+      return token.startsWith("TEST-") || base !== API_MERCADOPAGO;
     },
   },
 
