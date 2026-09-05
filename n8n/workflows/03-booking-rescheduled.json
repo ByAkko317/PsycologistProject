@@ -10,13 +10,13 @@
           "rawBody": true
         }
       },
-      "id": "webhook-turnos-booking-rescheduled",
+      "id": "cfa0233b-b8a6-492f-9367-41298947ca1d",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -120,
-        300
+        0,
+        0
       ],
       "webhookId": "turnos-turnos-booking-rescheduled",
       "notes": "URL a copiar en .env.local del proyecto Next.js"
@@ -25,13 +25,13 @@
       "parameters": {
         "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
       },
-      "id": "validar-firma",
+      "id": "0f66b19e-0f04-4cf1-b5ef-4425b1eddcdd",
       "name": "Validar firma",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
-        300
+        224,
+        0
       ],
       "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
     },
@@ -39,43 +39,57 @@
       "parameters": {
         "jsCode": "const d = $json.data;\n// previousStartsAt viene solo en este evento: sirve para el mensaje \"antes/ahora\".\nconst antes = d.previousStartsAt\n  ? new Date(d.previousStartsAt).toLocaleString('es-AR', { timeZone: d.display.timezone })\n  : null;\n\nconst texto =\n  'Hola ' + d.client.name + '! Movimos tu turno en ' + d.business.name + '.\\n\\n' +\n  (antes ? '❌ Antes: ' + antes + '\\n' : '') +\n  '✅ Ahora: ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n\\n' +\n  'Gestionalo cuando quieras: ' + d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Turno reprogramado — ' + d.business.name,\n  texto,\n  original: $json,\n} }];"
       },
-      "id": "armar-mensaje",
+      "id": "16e65c0c-8e09-4b9c-a7ae-4221cc2c3d93",
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        300
+        448,
+        0
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-avisar-al-cliente",
-      "name": "Avisar al cliente",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        560,
-        300
-      ],
-      "notes": "REEMPLAZAR por WhatsApp o email. Texto: {{ $json.texto }}",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}",
+        "options": {}
       },
-      "id": "responder",
+      "id": "1eda6125-ccf9-41d8-b3d4-a07755e24824",
       "name": "Responder a la app",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        820,
-        300
+        944,
+        0
       ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1253004874567555",
+        "recipientPhoneNumber": "={{ $json.para_whatsapp }}",
+        "textBody": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        0
+      ],
+      "id": "74d36dc1-7ad2-47e7-a49e-7fb896df36f7",
+      "name": "Send message",
+      "webhookId": "8787a411-3269-4aeb-baec-7dccf8d0a8aa",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "AWuvlyHIZiy8YUG7",
+          "name": "WhatsApp account"
+        }
+      },
+      "notes": "=REEMPLAZAR por WhatsApp o email.\n\nTexto: {{ $json.texto }}\n\nDestinatario: {{ $json.para_whatsapp }}"
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
@@ -103,14 +117,14 @@
       "main": [
         [
           {
-            "node": "Avisar al cliente",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Avisar al cliente": {
+    "Send message": {
       "main": [
         [
           {
@@ -122,9 +136,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "3e22ee55-5074-470b-a8f1-1610953e0962",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1fcfa9fe766670043d84b90cae72e0e1cf7aa09e3c7ae6d7e6070ad9a6a9e85a"
+  },
+  "nodeGroups": [],
+  "id": "kUj1PCdciD21z3BG",
+  "tags": []
 }

@@ -6,19 +6,18 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 1
+              "field": "hours"
             }
           ]
         }
       },
-      "id": "cron",
+      "id": "4b652fe4-84b8-4b52-97bb-2058ef521104",
       "name": "Cada hora",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -120,
-        300
+        0,
+        0
       ],
       "notes": "Corre cada hora y pregunta que turnos arrancan dentro de ~24hs"
     },
@@ -53,13 +52,13 @@
         },
         "options": {}
       },
-      "id": "traer-turnos",
+      "id": "fae983ae-83c9-47c4-ac74-d55cbee9723e",
       "name": "Traer turnos proximos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        100,
-        300
+        224,
+        0
       ],
       "notes": "GET /api/n8n/bookings?window=24h&minLead=2h — devuelve solo los que todavia no tienen recordatorio enviado"
     },
@@ -68,45 +67,41 @@
         "fieldToSplitOut": "bookings",
         "options": {}
       },
-      "id": "separar",
+      "id": "707bdfcf-3db8-430d-aed3-57a8ef442dde",
       "name": "Un item por turno",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        320,
-        300
+        448,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const d = $json;\nconst texto =\n  'Hola ' + d.client.name + '! Te recordamos tu turno en ' + d.business.name + '.\\n\\n' +\n  '📅 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n\\n' +\n  'Si no podes venir, avisanos desde acá: ' + d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Recordatorio: tu turno del ' + d.display.date,\n  bookingId: d.booking.id,\n  texto,\n} }];"
       },
-      "id": "armar-mensaje",
+      "id": "7d1bd4e4-4696-4eb7-b809-c4cfc04c0e5d",
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        540,
-        300
+        672,
+        0
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-enviar-recordatorio",
-      "name": "Enviar recordatorio",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        760,
-        300
-      ],
-      "notes": "REEMPLAZAR por WhatsApp/email. Texto: {{ $json.texto }}",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "method": "POST",
         "url": "={{ $env.TURNOS_APP_URL }}/api/n8n/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TURNOS_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -120,28 +115,45 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.TURNOS_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {}
       },
-      "id": "marcar-enviado",
+      "id": "f992c902-b464-425e-b63a-d1825d7f89a2",
       "name": "Marcar recordatorio enviado",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        980,
-        300
+        1104,
+        0
       ],
       "notes": "Evita mandar el mismo recordatorio dos veces si el Cron corre de nuevo"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1253004874567555",
+        "recipientPhoneNumber": "={{ $json.para_whatsapp }}",
+        "textBody": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "55c59178-3d55-4aa4-a699-6775fe83ca46",
+      "name": "Send message",
+      "webhookId": "a0e25415-5764-4416-ac94-7c63f25b4866",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "AWuvlyHIZiy8YUG7",
+          "name": "WhatsApp account"
+        }
+      },
+      "notes": "=REEMPLAZAR por WhatsApp/email. \n\nTexto: {{ $json.texto }}\nDestinatario: {{ $json.para_whatsapp }}"
     }
   ],
+  "pinData": {},
   "connections": {
     "Cada hora": {
       "main": [
@@ -180,14 +192,14 @@
       "main": [
         [
           {
-            "node": "Enviar recordatorio",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar recordatorio": {
+    "Send message": {
       "main": [
         [
           {
@@ -199,9 +211,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "b3e9f40c-be07-4e7b-8fff-d2ed0f52f83d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1fcfa9fe766670043d84b90cae72e0e1cf7aa09e3c7ae6d7e6070ad9a6a9e85a"
+  },
+  "nodeGroups": [],
+  "id": "4YL6N4foj6j86Az6",
+  "tags": []
 }

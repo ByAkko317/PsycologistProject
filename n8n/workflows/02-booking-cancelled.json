@@ -10,13 +10,13 @@
           "rawBody": true
         }
       },
-      "id": "webhook-turnos-booking-cancelled",
+      "id": "8249f52e-6455-4a11-afc7-474bee1f4590",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -120,
-        300
+        -688,
+        112
       ],
       "webhookId": "turnos-turnos-booking-cancelled",
       "notes": "URL a copiar en .env.local del proyecto Next.js"
@@ -25,13 +25,13 @@
       "parameters": {
         "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
       },
-      "id": "validar-firma",
+      "id": "d41f5726-8528-4c24-b5fc-161205371a90",
       "name": "Validar firma",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
-        300
+        -464,
+        112
       ],
       "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
     },
@@ -39,56 +39,81 @@
       "parameters": {
         "jsCode": "const d = $json.data;\nconst texto =\n  'Hola ' + d.client.name + ', cancelamos tu turno del ' + d.display.date +\n  ' a las ' + d.display.time + ' en ' + d.business.name + '.' +\n  (d.booking.cancellationReason ? '\\nMotivo: ' + d.booking.cancellationReason : '') +\n  '\\n\\nCuando quieras podes sacar uno nuevo. Te esperamos!';\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Turno cancelado — ' + d.business.name,\n  // Aviso interno para el profesional, para que libere la agenda\n  aviso_profesional: d.professional.email,\n  texto,\n  original: $json,\n} }];"
       },
-      "id": "armar-mensaje",
+      "id": "b9065217-9ed8-4fba-97d7-ecbbb73a1ad0",
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        300
+        -240,
+        112
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-avisar-al-cliente",
-      "name": "Avisar al cliente",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        560,
-        200
-      ],
-      "notes": "REEMPLAZAR por WhatsApp o email. Texto: {{ $json.texto }}",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-avisar-al-profesional",
-      "name": "Avisar al profesional",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        560,
-        420
-      ],
-      "notes": "REEMPLAZAR por email al profesional: {{ $json.aviso_profesional }}",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}",
+        "options": {}
       },
-      "id": "responder",
+      "id": "0f9cd054-3f21-45bb-805c-f1c166fd2db9",
       "name": "Responder a la app",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        820,
-        300
+        272,
+        112
       ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1253004874567555",
+        "recipientPhoneNumber": "={{ $json.para_whatsapp }}",
+        "textBody": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "240883b0-a8f1-4605-b127-d5f7f7218138",
+      "name": "Send message",
+      "webhookId": "6f7cb6e3-a709-4fbd-8b96-7320cfbdf436",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "AWuvlyHIZiy8YUG7",
+          "name": "WhatsApp account"
+        }
+      },
+      "notes": "=REEMPLAZAR por WhatsApp o email.\nTexto: {{ $json.texto }}\nRecipiente: {{ $json.para_whatsapp }}"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.aviso_profesional }}",
+        "subject": "={{ $json.asunto }}",
+        "message": "={{ $json.texto }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        224
+      ],
+      "id": "43ad1f1e-39db-4303-a7bc-2683b376232f",
+      "name": "Send a message",
+      "webhookId": "dbdf3221-1c2a-46b3-a188-cb6da97560e3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "h6wIT7yuy3XWEOi0",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "=REEMPLAZAR por email al profesional:\n{{ $json.aviso_profesional }}\n{{ $json.texto }}\n{{ $json.asunto }}"
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
@@ -116,19 +141,19 @@
       "main": [
         [
           {
-            "node": "Avisar al cliente",
+            "node": "Send message",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Avisar al profesional",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Avisar al cliente": {
+    "Send message": {
       "main": [
         [
           {
@@ -139,7 +164,7 @@
         ]
       ]
     },
-    "Avisar al profesional": {
+    "Send a message": {
       "main": [
         [
           {
@@ -151,9 +176,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "58ddd2e6-64c7-4a99-83db-a8cfbb107ca6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1fcfa9fe766670043d84b90cae72e0e1cf7aa09e3c7ae6d7e6070ad9a6a9e85a"
+  },
+  "nodeGroups": [],
+  "id": "fHDmplcPuPaEUDAn",
+  "tags": []
 }

@@ -10,13 +10,13 @@
           "rawBody": true
         }
       },
-      "id": "webhook-turnos-booking-created",
+      "id": "939389be-bdb9-4e1b-94d0-88f371936359",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -120,
-        300
+        -688,
+        240
       ],
       "webhookId": "turnos-turnos-booking-created",
       "notes": "URL a copiar en .env.local del proyecto Next.js"
@@ -25,13 +25,13 @@
       "parameters": {
         "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
       },
-      "id": "validar-firma",
+      "id": "1bb80d27-2385-40ae-94c1-da4d5e3839ac",
       "name": "Validar firma",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
-        300
+        -464,
+        240
       ],
       "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
     },
@@ -39,13 +39,13 @@
       "parameters": {
         "jsCode": "// Arma el texto de confirmacion. Editalo libremente.\nconst d = $json.data;\nconst pagoPendiente = d.payment?.required && d.booking.paymentStatus !== 'paid';\n\nconst texto =\n  'Hola ' + d.client.name + '! Tu turno en ' + d.business.name + ' quedo reservado.\\n\\n' +\n  '📅 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n' +\n  (pagoPendiente\n    ? '\\n⚠️ Falta abonar la sena de $' + d.payment.depositAmount + ':\\n' + d.payment.checkoutUrl + '\\n'\n    : '') +\n  '\\nSi necesitas cancelar o reprogramar (hasta ' + d.business.cancellationHours + 'hs antes):\\n' +\n  d.links.manage;\n\nreturn [{\n  json: {\n    para_whatsapp: d.client.phone,\n    para_email: d.client.email,\n    asunto: 'Turno confirmado en ' + d.business.name,\n    texto,\n    // Datos crudos por si el nodo de envio los necesita\n    original: $json,\n  },\n}];"
       },
-      "id": "armar-mensaje",
+      "id": "4c0af8cf-a635-4573-96c1-dd143f3829f3",
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        300
+        -240,
+        240
       ]
     },
     {
@@ -53,7 +53,9 @@
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "version": 2
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
           },
           "conditions": [
             {
@@ -71,33 +73,22 @@
         },
         "options": {}
       },
-      "id": "tiene-para_whatsapp",
+      "id": "9fb35e7f-c9ce-4050-a215-e9cef04a43d7",
       "name": "¿Tiene WhatsApp?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        560,
-        200
+        112,
+        240
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-enviar-whatsapp",
-      "name": "Enviar WhatsApp",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        560,
-        60
-      ],
-      "notes": "REEMPLAZAR por el nodo de WhatsApp Business API o Twilio. Campo del mensaje: {{ $json.texto }} · destinatario: {{ $json.para_whatsapp }}",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
             "version": 2
           },
           "conditions": [
@@ -116,43 +107,81 @@
         },
         "options": {}
       },
-      "id": "tiene-email",
+      "id": "dbb31162-2514-4896-866c-01d70940cdc7",
       "name": "¿Tiene email?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        560,
-        420
+        0,
+        496
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-enviar-email",
-      "name": "Enviar email",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        800,
-        540
-      ],
-      "notes": "REEMPLAZAR por el nodo Send Email / Gmail / SendGrid. Asunto: {{ $json.asunto }} · cuerpo: {{ $json.texto }}",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}",
+        "options": {}
       },
-      "id": "responder",
+      "id": "e890e194-c1bb-48d3-ac4f-fd04bef6f3a4",
       "name": "Responder a la app",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1040,
-        300
+        480,
+        240
       ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1253004874567555",
+        "recipientPhoneNumber": "={{ $json.para_whatsapp }}",
+        "textBody": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2a0c9a37-9024-4a19-8e56-ddf377bf50cd",
+      "name": "Send message",
+      "webhookId": "d684369c-d052-4f7e-8ff2-17a90fedfb2a",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "AWuvlyHIZiy8YUG7",
+          "name": "WhatsApp account"
+        }
+      },
+      "notes": "=REEMPLAZAR por el nodo de WhatsApp Business API o Twilio.\n\nCampo del mensaje: {{ $json.texto }}\n\nDestinatario: {{ $json.para_whatsapp }}"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.para_email }}",
+        "subject": "={{ $json.asunto }}",
+        "message": "={{ $json.texto }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        480
+      ],
+      "id": "ff3aa1c2-6426-43fc-bad1-2b216939d12f",
+      "name": "Send a message",
+      "webhookId": "039b8dd7-18cd-4be4-a256-da65c21dc26f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "h6wIT7yuy3XWEOi0",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "=REEMPLAZAR por el nodo Send Email / Gmail / SendGrid.\n\nDestinatario: {{ $json.para_email }}\n\nAsunto: {{ $json.asunto }}\n\nCuerpo: {{ $json.texto }}"
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
@@ -180,12 +209,12 @@
       "main": [
         [
           {
-            "node": "¿Tiene WhatsApp?",
+            "node": "¿Tiene email?",
             "type": "main",
             "index": 0
           },
           {
-            "node": "¿Tiene email?",
+            "node": "¿Tiene WhatsApp?",
             "type": "main",
             "index": 0
           }
@@ -196,7 +225,7 @@
       "main": [
         [
           {
-            "node": "Enviar WhatsApp",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }
@@ -207,14 +236,14 @@
       "main": [
         [
           {
-            "node": "Enviar email",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar WhatsApp": {
+    "Send message": {
       "main": [
         [
           {
@@ -225,7 +254,7 @@
         ]
       ]
     },
-    "Enviar email": {
+    "Send a message": {
       "main": [
         [
           {
@@ -237,9 +266,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "c530a545-8207-452b-ac39-9e5f024863e5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1fcfa9fe766670043d84b90cae72e0e1cf7aa09e3c7ae6d7e6070ad9a6a9e85a"
+  },
+  "nodeGroups": [],
+  "id": "bUR4FO2KpdJHh3HF",
+  "tags": []
 }

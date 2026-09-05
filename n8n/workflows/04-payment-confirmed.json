@@ -10,13 +10,13 @@
           "rawBody": true
         }
       },
-      "id": "webhook-turnos-payment-confirmed",
+      "id": "7a47ceeb-bf7f-40ad-a0af-5041730d9872",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -120,
-        300
+        0,
+        0
       ],
       "webhookId": "turnos-turnos-payment-confirmed",
       "notes": "URL a copiar en .env.local del proyecto Next.js"
@@ -25,13 +25,13 @@
       "parameters": {
         "jsCode": "// Valida la firma HMAC-SHA256 que manda la app en X-Turnos-Signature.\n// El secreto debe coincidir con N8N_WEBHOOK_SECRET del proyecto Next.js.\n// Guardalo en n8n como variable de entorno TURNOS_WEBHOOK_SECRET.\nconst crypto = require('crypto');\n\nconst secreto = $env.TURNOS_WEBHOOK_SECRET || '';\nconst entrada = $input.first();\nconst firmaRecibida = entrada.json.headers['x-turnos-signature'] || '';\nconst cuerpo = entrada.json.body;\n\nif (!secreto) {\n  throw new Error('Falta la variable de entorno TURNOS_WEBHOOK_SECRET en n8n');\n}\n\n// Importante: hay que firmar el JSON EXACTO que mando la app.\n// Por eso el nodo Webhook tiene rawBody activado.\nconst crudo = entrada.binary?.data\n  ? Buffer.from(entrada.binary.data.data, 'base64').toString('utf8')\n  : JSON.stringify(cuerpo);\n\nconst esperada = crypto.createHmac('sha256', secreto).update(crudo).digest('hex');\n\nconst iguales =\n  firmaRecibida.length === esperada.length &&\n  crypto.timingSafeEqual(Buffer.from(firmaRecibida), Buffer.from(esperada));\n\nif (!iguales) {\n  throw new Error('Firma invalida: la peticion no viene de la app de Turnos');\n}\n\nreturn [{ json: cuerpo }];"
       },
-      "id": "validar-firma",
+      "id": "d702940f-05e8-4d90-ae99-13da9072f830",
       "name": "Validar firma",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
-        300
+        224,
+        0
       ],
       "notes": "No borrar: sin esto cualquiera puede disparar mensajes a tus clientes"
     },
@@ -39,43 +39,57 @@
       "parameters": {
         "jsCode": "const d = $json.data;\nconst texto =\n  'Listo ' + d.client.name + ', recibimos tu pago de $' + d.payment.amount + '. ' +\n  'Tu turno del ' + d.display.date + ' a las ' + d.display.time + ' quedo confirmado.\\n\\n' +\n  d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Pago confirmado — ' + d.business.name,\n  texto,\n  original: $json,\n} }];"
       },
-      "id": "armar-mensaje",
+      "id": "791992da-c856-4179-b4a8-3d2da65749c3",
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        300
+        448,
+        0
       ]
-    },
-    {
-      "parameters": {},
-      "id": "placeholder-enviar-comprobante",
-      "name": "Enviar comprobante",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        560,
-        300
-      ],
-      "notes": "REEMPLAZAR por WhatsApp/email. Opcional: generar PDF del comprobante",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}"
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.event }) }}",
+        "options": {}
       },
-      "id": "responder",
+      "id": "c316afc0-bcca-4864-8b8e-029941853cc3",
       "name": "Responder a la app",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        820,
-        300
+        944,
+        0
       ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1253004874567555",
+        "recipientPhoneNumber": "={{ $json.para_whatsapp }}",
+        "textBody": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        0
+      ],
+      "id": "8db88093-994c-4dfc-8d70-83a2d25cab97",
+      "name": "Send message",
+      "webhookId": "698f7a21-8089-4bb1-9f00-5ab7052bb9d4",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "AWuvlyHIZiy8YUG7",
+          "name": "WhatsApp account"
+        }
+      },
+      "notes": "REEMPLAZAR por WhatsApp/email. Opcional: generar PDF del comprobante\n\nTexto: {{ $json.texto }}\nDestinatario: {{ $json.para_whatsapp }}"
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
@@ -103,14 +117,14 @@
       "main": [
         [
           {
-            "node": "Enviar comprobante",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar comprobante": {
+    "Send message": {
       "main": [
         [
           {
@@ -122,9 +136,21 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "pinData": {}
+  "versionId": "34e757ea-83ad-4d1d-8b50-a49b875531f4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1fcfa9fe766670043d84b90cae72e0e1cf7aa09e3c7ae6d7e6070ad9a6a9e85a"
+  },
+  "nodeGroups": [],
+  "id": "utboboWUnbdQe8Mb",
+  "tags": []
 }
