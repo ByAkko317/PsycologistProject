@@ -1,5 +1,5 @@
 {
-  "name": "Turnos · payment.confirmed",
+  "name": "Turnos \u00b7 payment.confirmed",
   "nodes": [
     {
       "parameters": {
@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $json.data;\nconst texto =\n  'Listo ' + d.client.name + ', recibimos tu pago de $' + d.payment.amount + '. ' +\n  'Tu turno del ' + d.display.date + ' a las ' + d.display.time + ' quedo confirmado.\\n\\n' +\n  d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Pago confirmado — ' + d.business.name,\n  texto,\n  original: $json,\n} }];"
+        "jsCode": "const d = $json.data;\nconst texto =\n  'Listo ' + d.client.name + ', recibimos tu pago de $' + d.payment.amount + '. ' +\n  'Tu turno del ' + d.display.date + ' a las ' + d.display.time + ' quedo confirmado.\\n\\n' +\n  d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Pago confirmado \u2014 ' + d.business.name,\n  texto,\n  original: $json,\n} }];"
       },
       "id": "791992da-c856-4179-b4a8-3d2da65749c3",
       "name": "Armar mensaje",
@@ -86,7 +86,7 @@
           "name": "WhatsApp account"
         }
       },
-      "notes": "REEMPLAZAR por WhatsApp/email. Opcional: generar PDF del comprobante\n\nTexto: {{ $json.texto }}\nDestinatario: {{ $json.para_whatsapp }}"
+      "notes": "Envia por WhatsApp Cloud API.\n\nEl numero de origen sale de $env.WHATSAPP_PHONE_NUMBER_ID: no lo escribas fijo aca, porque este archivo se versiona en un repo publico.\n\nDestinatario: {{ $json.para_whatsapp }}\nTexto: {{ $json.texto }}"
     }
   ],
   "pinData": {},

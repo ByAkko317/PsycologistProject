@@ -1,5 +1,5 @@
 {
-  "name": "Turnos · booking.cancelled",
+  "name": "Turnos \u00b7 booking.cancelled",
   "nodes": [
     {
       "parameters": {
@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $json.data;\nconst texto =\n  'Hola ' + d.client.name + ', cancelamos tu turno del ' + d.display.date +\n  ' a las ' + d.display.time + ' en ' + d.business.name + '.' +\n  (d.booking.cancellationReason ? '\\nMotivo: ' + d.booking.cancellationReason : '') +\n  '\\n\\nCuando quieras podes sacar uno nuevo. Te esperamos!';\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Turno cancelado — ' + d.business.name,\n  // Aviso interno para el profesional, para que libere la agenda\n  aviso_profesional: d.professional.email,\n  texto,\n  original: $json,\n} }];"
+        "jsCode": "const d = $json.data;\nconst texto =\n  'Hola ' + d.client.name + ', cancelamos tu turno del ' + d.display.date +\n  ' a las ' + d.display.time + ' en ' + d.business.name + '.' +\n  (d.booking.cancellationReason ? '\\nMotivo: ' + d.booking.cancellationReason : '') +\n  '\\n\\nCuando quieras podes sacar uno nuevo. Te esperamos!';\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Turno cancelado \u2014 ' + d.business.name,\n  // Aviso interno para el profesional, para que libere la agenda\n  aviso_profesional: d.professional.email,\n  texto,\n  original: $json,\n} }];"
       },
       "id": "b9065217-9ed8-4fba-97d7-ecbbb73a1ad0",
       "name": "Armar mensaje",
@@ -86,7 +86,7 @@
           "name": "WhatsApp account"
         }
       },
-      "notes": "=REEMPLAZAR por WhatsApp o email.\nTexto: {{ $json.texto }}\nRecipiente: {{ $json.para_whatsapp }}"
+      "notes": "Envia por WhatsApp Cloud API.\n\nEl numero de origen sale de $env.WHATSAPP_PHONE_NUMBER_ID: no lo escribas fijo aca, porque este archivo se versiona en un repo publico.\n\nDestinatario: {{ $json.para_whatsapp }}\nTexto: {{ $json.texto }}"
     },
     {
       "parameters": {
@@ -110,7 +110,7 @@
           "name": "Gmail account"
         }
       },
-      "notes": "=REEMPLAZAR por email al profesional:\n{{ $json.aviso_profesional }}\n{{ $json.texto }}\n{{ $json.asunto }}"
+      "notes": "Envia el email al cliente.\n\nDestinatario: {{ $json.para_email }}\nAsunto: {{ $json.asunto }}\nCuerpo: {{ $json.texto }}"
     }
   ],
   "pinData": {},

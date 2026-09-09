@@ -1,5 +1,5 @@
 {
-  "name": "Turnos · recordatorio 24hs",
+  "name": "Turnos \u00b7 recordatorio 24hs",
   "nodes": [
     {
       "parameters": {
@@ -60,7 +60,7 @@
         224,
         0
       ],
-      "notes": "GET /api/n8n/bookings?window=24h&minLead=2h — devuelve solo los que todavia no tienen recordatorio enviado"
+      "notes": "GET /api/n8n/bookings?window=24h&minLead=2h \u2014 devuelve solo los que todavia no tienen recordatorio enviado"
     },
     {
       "parameters": {
@@ -78,7 +78,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $json;\nconst texto =\n  'Hola ' + d.client.name + '! Te recordamos tu turno en ' + d.business.name + '.\\n\\n' +\n  '📅 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '💬 ' + d.service.name + ' con ' + d.professional.name + '\\n\\n' +\n  'Si no podes venir, avisanos desde acá: ' + d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Recordatorio: tu turno del ' + d.display.date,\n  bookingId: d.booking.id,\n  texto,\n} }];"
+        "jsCode": "const d = $json;\nconst texto =\n  'Hola ' + d.client.name + '! Te recordamos tu turno en ' + d.business.name + '.\\n\\n' +\n  '\ud83d\udcc5 ' + d.display.date + ' a las ' + d.display.time + '\\n' +\n  '\ud83d\udcac ' + d.service.name + ' con ' + d.professional.name + '\\n\\n' +\n  'Si no podes venir, avisanos desde ac\u00e1: ' + d.links.manage;\n\nreturn [{ json: {\n  para_whatsapp: d.client.phone,\n  para_email: d.client.email,\n  asunto: 'Recordatorio: tu turno del ' + d.display.date,\n  bookingId: d.booking.id,\n  texto,\n} }];"
       },
       "id": "7d1bd4e4-4696-4eb7-b809-c4cfc04c0e5d",
       "name": "Armar mensaje",
@@ -150,7 +150,7 @@
           "name": "WhatsApp account"
         }
       },
-      "notes": "=REEMPLAZAR por WhatsApp/email. \n\nTexto: {{ $json.texto }}\nDestinatario: {{ $json.para_whatsapp }}"
+      "notes": "Envia por WhatsApp Cloud API.\n\nEl numero de origen sale de $env.WHATSAPP_PHONE_NUMBER_ID: no lo escribas fijo aca, porque este archivo se versiona en un repo publico.\n\nDestinatario: {{ $json.para_whatsapp }}\nTexto: {{ $json.texto }}"
     }
   ],
   "pinData": {},

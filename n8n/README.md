@@ -4,10 +4,9 @@ Todo lo que sale de la app hacia n8n ya está construido y probado. Lo que falta
 es **lo que pasa dentro de n8n**: conectar los proveedores reales de WhatsApp y
 email, y activar los workflows.
 
-Esta carpeta es tu punto de partida. Los 5 archivos de `workflows/` se importan
-directo en n8n y ya traen la validación de firma resuelta y los mensajes
-redactados: solo hay que reemplazar los nodos marcados como
-**`REEMPLAZAR`** por los nodos reales de tu proveedor.
+Los 5 archivos de `workflows/` se importan directo en n8n y ya traen todo
+armado: validación de firma, mensajes redactados y los nodos de WhatsApp y
+Gmail conectados. Al importarlos solo falta elegir tus credenciales y activar.
 
 ---
 
@@ -19,10 +18,9 @@ redactados: solo hay que reemplazar los nodos marcados como
 | Payload canónico (todo lo que un mensaje necesita) | Hecho | `bookingPayload()` |
 | Endpoint entrante para el Cron de recordatorios | Hecho | `app/api/n8n/bookings/route.ts` |
 | Cron propio de la app (modelo PUSH) | Hecho | `app/api/cron/reminders/route.ts` |
-| Esqueletos de los 5 workflows | Hecho | `n8n/workflows/*.json` |
-| **Nodos de envío de WhatsApp** | **Pendiente — tuyo** | dentro de n8n |
-| **Nodos de envío de email** | **Pendiente — tuyo** | dentro de n8n |
+| Los 5 workflows, con WhatsApp y Gmail conectados | Hecho | `n8n/workflows/*.json` |
 | **Credenciales del proveedor** | **Pendiente — tuyo** | dentro de n8n |
+| **Elegir la credencial en cada nodo de envío** | **Pendiente — tuyo** | al importar |
 
 La app **nunca** arma ni envía un mensaje. Solo avisa "pasó esto" con todos los
 datos. Todo el texto vive en n8n, así que se puede cambiar la redacción sin
@@ -32,41 +30,61 @@ tocar el código ni volver a deployar.
 
 ## 2. Puesta en marcha (15 minutos)
 
-### 2.1 Levantar n8n
+### 2.1 Variables de entorno
 
 ```bash
-# opción rápida, sin instalar nada
-docker run -it --rm -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
+cd n8n
+cp .env.n8n.example .env.n8n     # .env.n8n está en .gitignore
 ```
 
-O crear una cuenta en [n8n.cloud](https://n8n.cloud).
-
-### 2.2 Variables de entorno **dentro de n8n**
-
-La plantilla está en **`n8n/.env.n8n.example`**:
-
-```bash
-cp n8n/.env.n8n.example n8n/.env.n8n     # .env.n8n está en .gitignore
-docker run --env-file n8n/.env.n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
-```
-
-En n8n Cloud se cargan a mano en `Settings → Variables`.
+Completá los cuatro valores. En n8n Cloud se cargan a mano en
+`Settings → Variables`, una por una.
 
 | Variable | Valor | Para qué |
 |---|---|---|
 | `TURNOS_WEBHOOK_SECRET` | el mismo string que `N8N_WEBHOOK_SECRET` de la app | validar la firma de los eventos entrantes y autenticarse contra la API |
-| `TURNOS_APP_URL` | `https://tu-app.vercel.app` (o la URL del túnel) | el workflow de recordatorios consulta la API |
+| `TURNOS_APP_URL` | `http://host.docker.internal:3000` en local | el workflow de recordatorios consulta la API |
 | `TURNOS_TENANT_SLUG` | `demo` | qué negocio consultar en el recordatorio |
 | `WHATSAPP_PHONE_NUMBER_ID` | el identificador del número, en Meta for Developers | desde qué número salen los mensajes |
+
+> **`localhost` no sirve para `TURNOS_APP_URL`.** Adentro del contenedor,
+> `localhost` es el contenedor mismo: n8n se llamaría a sí mismo en vez de
+> llamar a la app. Usá `host.docker.internal`, o directamente la URL del túnel
+> si ya lo levantaste para Mercado Pago.
+
+### 2.2 Levantar n8n
+
+```bash
+cd n8n
+docker compose up
+```
+
+**Usá el compose, no un `docker run` a mano.** Los workflows necesitan dos
+opciones que el comando suelto no lleva, y sin ellas fallan con errores que no
+se parecen en nada a la causa:
+
+| Opción | Si falta |
+|---|---|
+| `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` | `access to env vars denied` en *Validar firma*. n8n 2.0 invirtió el default de esta variable, así que instalaciones nuevas la necesitan explícita |
+| `NODE_FUNCTION_ALLOW_BUILTIN=crypto` | `require('crypto')` falla y no se puede verificar la firma |
+
+El compose además fija la versión de la imagen. Sin tag, Docker reusa la que
+tengas cacheada: así terminaron dos máquinas del mismo equipo corriendo 2.29 y
+2.36, con defaults distintos y fallas distintas.
+
+> Cada volumen de Docker es una instalación separada, con sus propios
+> workflows y credenciales. Si venís de probar con `docker run -v n8ndata:...`,
+> lo que estabas ejecutando estaba en **ese** volumen, no en el del compose:
+> hay que volver a importar los workflows.
 
 > Generá el secreto una sola vez y usá el mismo de los dos lados:
 > ```bash
 > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 > ```
 
-**Estas variables no van en el `.env.local` de la app.** La app nunca habla con
-WhatsApp: solo avisa "pasó esto" y n8n decide a quién le escribe. Puestas del
-lado de la app no las lee nadie, y no hay ningún error que lo delate.
+**Las variables de n8n no van en el `.env.local` de la app.** La app nunca habla
+con WhatsApp: solo avisa "pasó esto" y n8n decide a quién le escribe. Puestas
+del lado de la app no las lee nadie, y no hay ningún error que lo delate.
 
 ### 2.3 Importar los workflows
 
@@ -102,10 +120,10 @@ N8N_WEBHOOK_SECRET=el-mismo-secreto-de-arriba
 Si una URL queda vacía, la app loguea el evento y sigue funcionando: no rompe
 nada. Eso permite trabajar los workflows de a uno.
 
-### 2.5 Reemplazar los nodos `REEMPLAZAR`
+### 2.5 Los campos que arma el mensaje
 
-Cada placeholder es un nodo *No Operation* con una nota que dice exactamente qué
-poner y qué campos usar. Los campos que te deja armados el nodo `Armar mensaje`:
+Los nodos de envío ya están conectados. Si querés cambiar la redacción, editá el
+nodo `Armar mensaje`, que deja preparados estos campos:
 
 | Campo | Contenido |
 |---|---|
@@ -360,3 +378,69 @@ pnpm audit:flujo
 
 Recorre los 11 pasos del flujo del PDF y reporta cuáles quedaron cubiertos de
 punta a punta. Ver `docs/auditoria.md`.
+
+---
+
+## 8. Errores frecuentes
+
+### `access to env vars denied`
+
+```
+ExpressionError: access to env vars denied
+causeDetailed: ...remove the environment variable 'N8N_BLOCK_ENV_ACCESS_IN_NODE'
+```
+
+n8n 2.0 invirtió el default de `N8N_BLOCK_ENV_ACCESS_IN_NODE` a `true`, así que
+las instalaciones nuevas bloquean `$env` en expresiones y en el nodo Code. Los
+cinco workflows lo usan: el secreto de la firma, el número de WhatsApp, la URL
+de la app.
+
+El `docker-compose.yml` ya trae `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. Si
+levantaste n8n de otra forma, agregala.
+
+Tiene una consecuencia: con `$env` desbloqueado, cualquiera que pueda editar un
+workflow en esa instancia lee **todas** las variables de entorno del contenedor.
+En una instancia de desarrollo de una persona da igual. En una compartida, el
+secreto conviene moverlo a una credencial de n8n.
+
+### `Cannot find module 'crypto'` en *Validar firma*
+
+Falta `NODE_FUNCTION_ALLOW_BUILTIN=crypto`. También está en el compose.
+
+En modo interno (el default) alcanza con ponerlo en el contenedor de n8n: el
+task runner hereda el entorno. Con runners externos va en el contenedor del
+runner.
+
+### El recordatorio no trae ningún turno, o falla la llamada a la app
+
+`TURNOS_APP_URL` apunta a `localhost`. Adentro del contenedor eso es el
+contenedor mismo. Usá `http://host.docker.internal:3000`, con esquema.
+
+### n8n arranca pero los workflows son los de antes
+
+Cada volumen de Docker es una instalación independiente. `docker run -v n8ndata:...`
+y `docker compose up` usan volúmenes distintos, con workflows y credenciales
+distintos.
+
+Para ver qué hay:
+
+```bash
+docker volume ls
+```
+
+Los workflows importados quedan guardados en el volumen: cambiar el JSON del
+repo no los actualiza. Después de un `git pull` que los toque, hay que volver a
+importarlos desde `Workflows → Import from File`.
+
+### Fallas distintas en dos máquinas del mismo equipo
+
+`n8nio/n8n` sin tag reusa la imagen cacheada de cada máquina. El compose fija la
+versión justamente para esto.
+
+```bash
+docker compose pull      # traer la versión fijada
+```
+
+### `Python 3 is missing from this system`
+
+Es un aviso, no un error. Ningún workflow de este proyecto usa Python.

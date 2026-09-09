@@ -1,0 +1,68 @@
+# =============================================================================
+# n8n para desarrollo local — la forma soportada de levantarlo
+# =============================================================================
+#
+#   cd n8n
+#   cp .env.n8n.example .env.n8n     # completar
+#   docker compose up
+#
+# Este archivo existe porque habia dos maneras de arrancar n8n y cada una
+# fallaba distinto: un `docker run` de la guia que no pasaba ninguna variable,
+# y un compose a mano al que le faltaban las dos opciones que los workflows
+# necesitan. Con un solo archivo versionado, arrancar mal deja de ser posible.
+
+services:
+  n8n:
+    # Version fija. Sin tag, Docker reusa la imagen que ya tengas cacheada:
+    # asi terminaron dos maquinas del mismo equipo corriendo 2.29 y 2.36, que
+    # traen defaults distintos y por lo tanto fallan distinto.
+    image: n8nio/n8n:2.36.7
+
+    ports:
+      - "5678:5678"
+
+    env_file:
+      - .env.n8n
+
+    environment:
+      # --- Requisitos de los workflows, no preferencias -----------------------
+
+      # Los 5 workflows leen $env (el secreto de la firma, el numero de
+      # WhatsApp, la URL de la app). n8n 2.0 invirtio el default de esta
+      # variable a `true`, y por eso el nodo "Validar firma" corta con
+      # "access to env vars denied".
+      #
+      # Ojo con lo que implica: cualquiera que pueda editar un workflow en
+      # esta instancia puede leer TODAS las variables de entorno del
+      # contenedor. Para una instancia de desarrollo de una persona es
+      # aceptable. Para una compartida, no: ahi conviene mover el secreto a
+      # una credencial de n8n.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+
+      # "Validar firma" hace require('crypto') para el HMAC.
+      # En modo interno (el default) alcanza con ponerlo aca: el task runner
+      # hereda el entorno. Si algun dia se pasa a runners externos, esta
+      # variable va en el contenedor del runner, no en este.
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+
+      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
+      - N8N_DIAGNOSTICS_ENABLED=false
+
+    # Permite que los workflows lleguen a la app con host.docker.internal.
+    # En Docker Desktop (Windows y Mac) ya existe; esta linea lo agrega
+    # tambien en Linux, donde no viene solo.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+    restart: unless-stopped
+
+volumes:
+  # Nombrado explicitamente. Docker Compose le antepone el nombre del
+  # directorio, asi que este volumen es distinto del que crea un `docker run`
+  # suelto: dos volumenes son dos instalaciones separadas, con workflows y
+  # credenciales que no se ven entre si.
+  n8n_data:
+    name: turnos_n8n_data
