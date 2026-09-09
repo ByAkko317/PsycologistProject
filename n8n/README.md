@@ -403,6 +403,48 @@ workflow en esa instancia lee **todas** las variables de entorno del contenedor.
 En una instancia de desarrollo de una persona da igual. En una compartida, el
 secreto conviene moverlo a una credencial de n8n.
 
+### `Object with ID 'messages' does not exist` en el nodo de WhatsApp
+
+```
+Bad request - please check your parameters
+Unsupported post request. Object with ID 'messages' does not exist...
+```
+
+Falta `WHATSAPP_PHONE_NUMBER_ID`. El nodo arma
+`graph.facebook.com/v13.0/{phoneNumberId}/messages`; con la variable vacía queda
+`.../v13.0//messages`, y Meta lee `messages` como si fuera el objeto. Por eso el
+mensaje habla de un objeto y no de una variable.
+
+Que el error sea *ese* y no uno de autenticación significa que **el token está
+bien**: Meta lo validó y recién después no encontró el objeto. Solo falta el
+identificador del número.
+
+Los workflows ahora cortan antes con un mensaje que lo nombra. Si aun así llegás
+a este error, revisá:
+
+- Que la variable esté en `n8n/.env.n8n`, no en el `.env.local` de la app.
+- **Que hayas recreado el contenedor.** `docker compose restart` no relee el
+  `env_file`; hace falta `docker compose up -d --force-recreate`.
+- Mayúsculas exactas: `WHATSAPP_PHONE_NUMBER_ID`. Las variables de entorno
+  distinguen mayúsculas, y un `Whatsapp_Phone_Number_Id` no lo encuentra nadie.
+- Que sea el **identificador** del número (una cadena de dígitos larga, en
+  Meta for Developers → WhatsApp → Configuración de la API), no el número.
+- Que la hayas puesto en `Settings → Variables` de n8n en vez del entorno: eso
+  se lee con `$vars`, no con `$env`.
+
+### Los mensajes no llegan aunque el nodo dé verde
+
+WhatsApp Cloud API en modo de prueba tiene dos límites que no son del proyecto:
+
+1. Solo se puede escribir a números **agregados como destinatarios de prueba**
+   en el panel de Meta. A cualquier otro, la API acepta y no entrega.
+2. Fuera de la ventana de 24hs desde el último mensaje del cliente, solo se
+   pueden mandar **plantillas aprobadas**, no texto libre. Los workflows mandan
+   texto libre, que es lo correcto para responder dentro de la ventana.
+
+Para la demo, lo práctico es cargar el número del consultorio como destinatario
+de prueba y escribirle primero desde ese número, para abrir la ventana.
+
 ### `Cannot find module 'crypto'` en *Validar firma*
 
 Falta `NODE_FUNCTION_ALLOW_BUILTIN=crypto`. También está en el compose.
