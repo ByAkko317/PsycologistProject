@@ -43,18 +43,30 @@ O crear una cuenta en [n8n.cloud](https://n8n.cloud).
 
 ### 2.2 Variables de entorno **dentro de n8n**
 
-En n8n: `Settings → Variables` (cloud) o variables de entorno del contenedor.
+La plantilla está en **`n8n/.env.n8n.example`**:
+
+```bash
+cp n8n/.env.n8n.example n8n/.env.n8n     # .env.n8n está en .gitignore
+docker run --env-file n8n/.env.n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
+```
+
+En n8n Cloud se cargan a mano en `Settings → Variables`.
 
 | Variable | Valor | Para qué |
 |---|---|---|
 | `TURNOS_WEBHOOK_SECRET` | el mismo string que `N8N_WEBHOOK_SECRET` de la app | validar la firma de los eventos entrantes y autenticarse contra la API |
-| `TURNOS_APP_URL` | `https://tu-app.vercel.app` (o la URL de ngrok) | el workflow de recordatorios consulta la API |
+| `TURNOS_APP_URL` | `https://tu-app.vercel.app` (o la URL del túnel) | el workflow de recordatorios consulta la API |
 | `TURNOS_TENANT_SLUG` | `demo` | qué negocio consultar en el recordatorio |
+| `WHATSAPP_PHONE_NUMBER_ID` | el identificador del número, en Meta for Developers | desde qué número salen los mensajes |
 
 > Generá el secreto una sola vez y usá el mismo de los dos lados:
 > ```bash
 > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 > ```
+
+**Estas variables no van en el `.env.local` de la app.** La app nunca habla con
+WhatsApp: solo avisa "pasó esto" y n8n decide a quién le escribe. Puestas del
+lado de la app no las lee nadie, y no hay ningún error que lo delate.
 
 ### 2.3 Importar los workflows
 
@@ -67,6 +79,11 @@ workflows/03-booking-rescheduled.json
 workflows/04-payment-confirmed.json
 workflows/05-reminder-24h.json
 ```
+
+Llegan **desactivados y sin credencial asignada**, a propósito. Un workflow que
+se importa activo empieza a mandar mensajes reales antes de que nadie mire a
+dónde van. Después de importar, en cada nodo de WhatsApp y de Gmail elegí tu
+credencial del desplegable, probá, y recién ahí activalo.
 
 ### 2.4 Copiar las URLs de los webhooks a la app
 
@@ -288,22 +305,52 @@ ngrok http 3000
 
 ---
 
-## 7. Checklist antes de devolver la rama
+## 7. Antes de commitear un workflow exportado
 
-- [ ] Los 5 workflows importados y **activos** en n8n
+**Este es el paso que ya falló una vez.** Corré siempre:
+
+```bash
+pnpm check:workflows            # falla si algo no se puede publicar
+pnpm check:workflows --arreglar # corrige lo que se corrige solo
+```
+
+### Por qué no alcanza con revisarlo a ojo
+
+La versión anterior de esta guía decía "revisá que el JSON no incluya
+credenciales". Se siguió al pie de la letra y aun así se publicaron cinco
+workflows con el número de WhatsApp de una cuenta real.
+
+El aviso apuntaba al problema equivocado. n8n **nunca** exporta tokens, así que
+buscar credenciales no encuentra nada y uno queda tranquilo. Lo que sí exporta,
+en silencio, es todo lo que identifica tu instalación:
+
+| Qué exporta n8n | Por qué importa en un repo abierto |
+|---|---|
+| `phoneNumberId` del nodo de WhatsApp | quien lo importe manda mensajes desde **tu** número |
+| `credentials.id` de cada nodo | son filas de *tu* n8n; en otra instancia da "credential not found" |
+| `meta.instanceId` | identifica tu instalación de n8n |
+| `pinData` | **lo más grave**: guarda una ejecución real, con nombre, teléfono y mail de un paciente |
+| `active: true` | al importarlo empieza a mandar mensajes solo |
+
+Ninguno de esos valores *parece* un secreto, y por eso pasan la revisión visual.
+El script los conoce a todos y no se olvida.
+
+### Checklist
+
+- [ ] `pnpm check:workflows` en verde ← **antes que nada**
+- [ ] Los 5 workflows importados y funcionando en n8n
 - [ ] `Validar firma` intacto en los 4 workflows de webhook
-- [ ] Nodos `REEMPLAZAR` cambiados por los reales (WhatsApp / email)
+- [ ] Nodos de envío conectados a tu credencial (WhatsApp / email)
 - [ ] Credenciales guardadas **dentro de n8n**, nunca en este repo
+- [ ] `WHATSAPP_PHONE_NUMBER_ID` en las variables de n8n, no en el JSON
 - [ ] Las 5 URLs cargadas en `.env.local` (y en Vercel, si está deployado)
 - [ ] Elegido **un solo** modelo de recordatorio (A o B) y desactivado el otro
-- [ ] Workflows exportados de vuelta a `n8n/workflows/` con los nodos reales
 - [ ] Prueba de firma alterada → el workflow falla
 - [ ] Una reserva real de punta a punta llegó por WhatsApp y/o email
 
-> ⚠️ Al exportar desde n8n, revisá que el JSON **no incluya credenciales**.
-> El `.gitignore` ya bloquea `n8n/**/credentials*.json`, pero las credenciales
-> también pueden filtrarse dentro de un nodo si se cargaron a mano en vez de
-> usar el gestor de credenciales de n8n.
+> Los workflows quedan versionados con `active: false`. Eso es correcto: el
+> archivo del repo es una plantilla, no el estado de tu n8n. Que estén activos
+> en tu instancia no se versiona ni hace falta.
 
 Cuando subas los workflows, corremos la auditoría automática:
 

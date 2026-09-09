@@ -51,3 +51,10 @@ yarn-error.log*
 
 # n8n: credenciales exportadas por error
 n8n/**/credentials*.json
+
+# n8n: variables de la instancia (el .example si se versiona)
+n8n/.env.n8n
+
+# Informes de revision: citan textualmente los valores que se estan sacando del
+# repo, asi que subirlos volveria a publicar justo lo que se quiso limpiar.
+INFORME-*.md

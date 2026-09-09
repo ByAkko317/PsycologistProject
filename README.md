@@ -293,6 +293,7 @@ Eventos emitidos:
 | `pnpm crear:usuario` | crea un usuario dueño o profesional (`--listar` para ver las fichas) |
 | `pnpm audit:flujo` | audita los 11 pasos del flujo de punta a punta |
 | `pnpm check:mercadopago` | valida las credenciales de pago contra la API, sin cobrar |
+| `pnpm check:workflows` | revisa que los workflows de n8n se puedan publicar (`--arreglar` corrige) |
 | `pnpm tunel` | expone la app en una URL pública y la configura (`--cloudflare` para levantarlo) |
 | `pnpm dev:sandbox` | levanta el entorno de prueba completo (app + Mercado Pago simulado + n8n simulado) |
 | `pnpm mock:mercadopago` | solo el simulador de Mercado Pago |
