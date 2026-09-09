@@ -83,10 +83,19 @@ async function main() {
 
   if (esTest) {
     ok("Access Token de PRUEBA", "no mueve plata real");
+    console.log(
+      `      ${c.dim}Pagá con una TARJETA DE PRUEBA y con tu usuario COMPRADOR de prueba.${c.off}`
+    );
   } else if (esProd) {
     warn(
       "Access Token de PRODUCCIÓN (APP_USR-)",
-      "Los pagos van a ser reales. Para probar usá las credenciales de prueba."
+      "Los pagos son REALES y las TARJETAS DE PRUEBA NO FUNCIONAN.\n" +
+        "      Mercado Pago no mezcla los dos mundos: una tarjeta de prueba contra\n" +
+        "      credenciales productivas hace que el botón de pagar quede gris, o\n" +
+        "      que al pagar aparezca un 'error inesperado' del lado de ellos.\n" +
+        "      Tampoco podés pagarte a vos mismo: el comprador tiene que ser una\n" +
+        "      cuenta distinta de la dueña de estas credenciales.\n\n" +
+        "      Para probar sin gastar plata, usá las credenciales de PRUEBA."
     );
   } else {
     err(
@@ -221,6 +230,8 @@ async function main() {
     } catch (e) {
       err("Falló la creación de la preferencia", e.message);
     }
+
+    await sondearMinimo(MONEDA_POR_SITIO[cuenta.site_id] ?? "ARS");
   }
 
   // --- 5. Webhook -----------------------------------------------------------
@@ -255,6 +266,76 @@ async function main() {
   }
 
   terminar();
+}
+
+/**
+ * Averigua desde que importe acepta preferencias esta cuenta.
+ *
+ * El minimo depende del pais y del medio de pago, y la documentacion publica
+ * no siempre coincide con lo que la cuenta acepta. En vez de repetir un numero
+ * de un blog, se le pregunta a la API: crear una preferencia no cobra nada,
+ * queda inerte hasta que alguien la abre y paga.
+ *
+ * Aparecio porque un servicio cargado a $10 para probar generaba una senia por
+ * debajo del minimo: Mercado Pago rechazaba la preferencia y la reserva seguia
+ * sin checkout, sin que se viera ningun error.
+ */
+async function sondearMinimo(moneda) {
+  const escala = [1, 5, 10, 25, 50, 100];
+  let menorOk = null;
+  let mayorFalla = null;
+
+  for (const monto of escala) {
+    try {
+      const res = await fetch(`${BASE}/checkout/preferences`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              title: "Sondeo de monto minimo — Turnos",
+              quantity: 1,
+              unit_price: monto,
+              currency_id: moneda,
+            },
+          ],
+          external_reference: "check-mercadopago-minimo",
+        }),
+      });
+      if (res.ok) {
+        menorOk = monto;
+        break;
+      }
+      mayorFalla = monto;
+    } catch {
+      break; // sin red: el chequeo de arriba ya lo reporto
+    }
+  }
+
+  console.log("");
+  if (menorOk === null) {
+    warn(
+      "No pude determinar el monto mínimo",
+      `Rechazó incluso ${escala.at(-1)} ${moneda}. Puede ser otra cosa: mirá el error de arriba.`
+    );
+  } else if (menorOk === escala[0]) {
+    ok(
+      `Acepta importes desde ${menorOk} ${moneda}`,
+      "cualquier seña razonable va a pasar"
+    );
+  } else {
+    warn(
+      `El importe mínimo de esta cuenta está entre ${mayorFalla} y ${menorOk} ${moneda}`,
+      `Rechazó ${mayorFalla} y aceptó ${menorOk}.\n` +
+        "      La seña se calcula como precio × porcentaje, así que un servicio\n" +
+        `      barato puede quedar por debajo. Con seña del 30%, el servicio\n` +
+        `      tiene que costar al menos ${Math.ceil(menorOk / 0.3)} ${moneda}.\n` +
+        "      Por debajo, la reserva se crea sin checkout y no hay redirección."
+    );
+  }
 }
 
 function terminar() {

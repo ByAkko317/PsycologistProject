@@ -175,7 +175,17 @@ export function BookingWizard({
         window.location.href = data.checkoutUrl as string;
         return;
       }
-      router.push(`/book/gracias?token=${data.token}&tenant=${tenant.slug}`);
+
+      // El turno quedo reservado pero el cobro no arranco. Antes esto era
+      // indistinguible de un servicio sin senia: la persona veia "gracias" y
+      // se iba pensando que estaba todo listo.
+      const params = new URLSearchParams({
+        token: String(data.token),
+        tenant: tenant.slug,
+      });
+      if (data.paymentError) params.set("pago", "fallo");
+
+      router.push(`/book/gracias?${params}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
       setEnviando(false);

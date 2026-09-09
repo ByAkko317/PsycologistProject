@@ -37,6 +37,9 @@ export async function POST(request: Request) {
         token: result.booking.publicToken,
         depositAmount: result.depositAmount,
         checkoutUrl: result.checkoutUrl,
+        // El turno se creo igual: no es un error de la peticion, por eso sigue
+        // siendo 201. Pero el que llama tiene que poder avisarlo.
+        paymentError: result.paymentError,
       },
       { status: 201 }
     );

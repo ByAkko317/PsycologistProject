@@ -233,6 +233,35 @@ pnpm check:mercadopago    # valida todo antes de probar, sin cobrar nada
 
 Paso a paso de las tres formas: [`docs/entorno-pruebas.md`](docs/entorno-pruebas.md).
 
+### Los dos mundos de Mercado Pago no se mezclan
+
+Esta es la fuente de casi todos los problemas de pago, y no se puede resolver
+desde el código:
+
+| | Credenciales `TEST-` | Credenciales `APP_USR-` |
+|---|---|---|
+| Con qué se paga | **tarjetas de prueba** | tarjetas reales |
+| Quién paga | tu usuario **comprador** de prueba | una persona real |
+| Plata | ninguna | real |
+
+Cruzarlos falla, pero **falla mal**: no dice "estás mezclando entornos". Una
+tarjeta de prueba contra credenciales productivas deja el botón de pagar en
+gris, o tira un "error inesperado" genérico ya dentro de Mercado Pago.
+
+Dos reglas más que no son obvias:
+
+- **No podés pagarte a vos mismo.** El comprador tiene que ser una cuenta
+  distinta de la dueña de las credenciales. Si el email del paciente es el de
+  la cuenta vendedora, Mercado Pago rechaza el pago.
+- **La seña tiene un mínimo.** Se calcula como precio × porcentaje, así que un
+  servicio barato cargado para probar puede quedar por debajo y Mercado Pago
+  rechaza la preferencia. `pnpm check:mercadopago` sondea la cuenta y reporta
+  el mínimo real, además del precio mínimo de servicio que se deduce.
+
+Si la preferencia se rechaza, el turno **igual queda reservado** y la persona
+ve un aviso de que el pago no pudo abrirse. El motivo técnico queda en la
+terminal, con el id del turno.
+
 ### Webhooks entrantes y URL pública
 
 Mercado Pago y n8n necesitan poder llamar de vuelta a la app. Con el simulador

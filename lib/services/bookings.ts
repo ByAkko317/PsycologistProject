@@ -46,6 +46,14 @@ export interface CreateBookingResult {
   checkoutUrl: string | null;
   /** Importe a pagar por adelantado. 0 = no requiere pago. */
   depositAmount: number;
+  /**
+   * Por que no hay checkout habiendo senia. `null` cuando todo salio bien.
+   *
+   * Sin este campo, un rechazo de Mercado Pago era indistinguible de un
+   * servicio sin senia: el turno se confirmaba y la persona llegaba a la
+   * pantalla de gracias sin enterarse de que el cobro nunca se inicio.
+   */
+  paymentError: string | null;
 }
 
 /** Paso 6 del flujo: crear el turno (y disparar booking.created). */
@@ -112,6 +120,14 @@ export async function createBooking(
 
   // Paso 5: si el servicio pide senia, se arma el checkout de Mercado Pago.
   let checkoutUrl: string | null = null;
+  let paymentError: string | null = null;
+
+  if (depositAmount > 0 && !isPaymentEnabled()) {
+    paymentError =
+      "El servicio pide senia pero Mercado Pago no esta configurado " +
+      "(falta MERCADOPAGO_ACCESS_TOKEN).";
+  }
+
   if (depositAmount > 0 && isPaymentEnabled()) {
     try {
       const pref = await createPaymentPreference({
@@ -130,8 +146,15 @@ export async function createBooking(
       await db.updateBooking(tenant.id, booking.id, { paymentId: pref.id });
     } catch (error) {
       // Un fallo de Mercado Pago no debe perder la reserva: queda pendiente y
-      // el negocio puede cobrar por otro medio.
-      console.error("[bookings] no se pudo crear la preferencia de pago", error);
+      // el negocio puede cobrar por otro medio. Pero tampoco puede pasar
+      // inadvertido, que es lo que ocurria antes: sin checkoutUrl el turno
+      // seguia igual que uno sin senia y nadie se enteraba de que el cobro no
+      // habia arrancado.
+      paymentError = explicarFalloDePago(error, depositAmount, tenant);
+      console.error(
+        `[bookings] no se pudo crear la preferencia de pago del turno ${booking.id}: ${paymentError}`,
+        error
+      );
     }
   }
 
@@ -145,7 +168,41 @@ export async function createBooking(
     },
   });
 
-  return { booking, detail, checkoutUrl, depositAmount };
+  return { booking, detail, checkoutUrl, depositAmount, paymentError };
+}
+
+/**
+ * Traduce el rechazo de Mercado Pago a algo que se pueda leer en pantalla.
+ *
+ * Los mensajes de la API vienen en ingles y hablan de campos del request
+ * ("invalid transaction_amount"), no de lo que la persona hizo. El caso mas
+ * comun en este proyecto es una senia por debajo del minimo que acepta Mercado
+ * Pago, que aparece al cargar un servicio barato para probar.
+ */
+function explicarFalloDePago(
+  error: unknown,
+  monto: number,
+  tenant: Tenant
+): string {
+  const crudo = error instanceof Error ? error.message : String(error);
+
+  if (/transaction_amount|invalid.*amount|amount.*invalid/i.test(crudo)) {
+    return (
+      `Mercado Pago rechazo una senia de ${monto} ${tenant.currency}: ` +
+      `probablemente este por debajo del minimo que acepta la cuenta. ` +
+      `Subi el precio del servicio o el porcentaje de senia. ` +
+      `Para saber el minimo exacto: pnpm check:mercadopago`
+    );
+  }
+  if (/\b401\b|unauthorized|invalid.*token/i.test(crudo)) {
+    return (
+      "Mercado Pago rechazo las credenciales. Revisa " +
+      "MERCADOPAGO_ACCESS_TOKEN con: pnpm check:mercadopago"
+    );
+  }
+  if (/MERCADOPAGO_API_BASE/i.test(crudo)) return crudo;
+
+  return `Mercado Pago no acepto la preferencia de pago: ${crudo}`;
 }
 
 /**

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function GraciasPage({
   searchParams,
 }: {
-  searchParams: { token?: string };
+  searchParams: { token?: string; pago?: string };
 }) {
   const token = searchParams.token;
   if (!token) notFound();
@@ -50,6 +50,15 @@ export default async function GraciasPage({
             ? "Tu horario queda reservado unos minutos hasta que se acredite la seña."
             : `Te esperamos en ${tenant.name}. Vas a recibir la confirmación por WhatsApp o email.`}
         </p>
+
+        {/* El cobro no llego a arrancar. Se avisa sin culpar a la persona ni
+            exponer el motivo tecnico, que es del negocio y no le sirve. */}
+        {searchParams.pago === "fallo" && (
+          <p className="mt-4 rounded-lg border border-warn/25 bg-warn-soft px-4 py-3 text-sm text-warn">
+            No pudimos abrir el pago online. Tu turno quedó reservado igual:{" "}
+            {tenant.name} se va a comunicar con vos para coordinar la seña.
+          </p>
+        )}
 
         <dl className="mt-8 rounded-xl border bg-surface p-5 text-sm">
           <Fila termino="Servicio" valor={detail.service?.name ?? "—"} />
