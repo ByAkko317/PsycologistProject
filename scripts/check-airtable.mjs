@@ -19,7 +19,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ESQUEMA, nombreDeTabla } from "./airtable-schema.mjs";
+import { ESQUEMA, nombreDeTabla, tablaPorNombre } from "./airtable-schema.mjs";
 
 // --- .env.local --------------------------------------------------------------
 const envPath = resolve(process.cwd(), ".env.local");
@@ -205,6 +205,29 @@ async function main() {
     const presentes = new Set(tabla.fields.map((f) => f.name));
     const ausentes = def.campos.filter((f) => !presentes.has(f.name));
 
+    // El tipo importa tanto como la presencia. Un campo de fecha convertido a
+    // "Date" en Airtable deja de devolver el ISO exacto que escribio la app:
+    // Airtable lo reinterpreta y puede perder la hora o el huso, y a partir de
+    // ahi los turnos se corren o dejan de parsear.
+    const porNombreCampo = new Map(tabla.fields.map((f) => [f.name, f.type]));
+    const tipoDistinto = def.campos.filter(
+      (f) => presentes.has(f.name) && porNombreCampo.get(f.name) !== f.type
+    );
+
+    if (tipoDistinto.length > 0) {
+      warn(
+        `Tabla "${nombre}": ${tipoDistinto.length} campo(s) con otro tipo`,
+        tipoDistinto
+          .map(
+            (f) =>
+              `      ${f.name}: es "${porNombreCampo.get(f.name)}" y se espera "${f.type}"`
+          )
+          .join("\n") +
+          "\n\n      La app escribe y lee estos campos como texto plano. Si Airtable\n" +
+          "      los interpreta, puede reformatearlos al guardarlos."
+      );
+    }
+
     if (ausentes.length === 0) {
       ok(`Tabla "${nombre}"`, `${def.campos.length} campos, todos presentes`);
     } else {
@@ -229,7 +252,7 @@ async function main() {
   if (faltantes.length === 0 && camposFaltantes.length === 0) {
     console.log("");
     const tenants = await at(
-      `${BASE_ID}/${encodeURIComponent(nombreDeTabla(ESQUEMA[0]))}?maxRecords=3`
+      `${BASE_ID}/${encodeURIComponent(nombreDeTabla(tablaPorNombre("Tenants")))}?maxRecords=3`
     );
 
     if (tenants.status === 403) {
@@ -262,7 +285,7 @@ async function main() {
 
       // Usuarios: lo que estaba intentando crear
       const users = await at(
-        `${BASE_ID}/${encodeURIComponent(nombreDeTabla(ESQUEMA[5]))}?maxRecords=3`
+        `${BASE_ID}/${encodeURIComponent(nombreDeTabla(tablaPorNombre("Users")))}?maxRecords=3`
       );
       if (users.status === 200) {
         const n = users.body?.records?.length ?? 0;
@@ -279,6 +302,11 @@ async function main() {
     }
   }
 
+  // --- 4b. Marcas de tiempo -------------------------------------------------
+  if (faltantes.length === 0 && camposFaltantes.length === 0) {
+    await revisarFechas();
+  }
+
   // --- 5. Qué hacer ---------------------------------------------------------
   if (faltantes.length > 0 || camposFaltantes.length > 0) {
     console.log(`
@@ -291,6 +319,79 @@ async function main() {
   }
 
   terminar();
+}
+
+/**
+ * Comprueba que las fechas guardadas se puedan volver a leer.
+ *
+ * La app las escribe como texto ISO. Dos cosas las rompen sin avisar: que
+ * alguien convierta el campo a tipo Date en Airtable (y Airtable lo
+ * reformatee), o que falte el huso horario. Sin huso, "9:00" se interpreta
+ * como UTC y el turno aparece tres horas corrido, los recordatorios salen a
+ * destiempo y la ventana de cancelacion se calcula mal.
+ *
+ * Existe porque el formato que se ve en la grilla de Airtable no es
+ * necesariamente el que esta guardado: Airtable muestra las fechas con su
+ * propio formato local, y eso hace dudar de datos que estan bien.
+ */
+async function revisarFechas() {
+  console.log("");
+  const r = await at(
+    `${BASE_ID}/${encodeURIComponent(nombreDeTabla(tablaPorNombre("Bookings")))}?maxRecords=25`
+  );
+  if (r.status !== 200) return;
+
+  const registros = r.body?.records ?? [];
+  if (registros.length === 0) {
+    console.log(`  ${c.dim}·${c.off} ${c.dim}Sin turnos todavia: no hay fechas que revisar.${c.off}`);
+    return;
+  }
+
+  const rotas = [];
+  const sinHuso = [];
+
+  for (const reg of registros) {
+    for (const campo of ["startsAt", "endsAt", "createdAt", "updatedAt"]) {
+      const v = reg.fields?.[campo];
+      if (typeof v !== "string" || v === "") continue;
+
+      if (Number.isNaN(Date.parse(v))) {
+        rotas.push(`${campo}="${v}"`);
+      } else if (!/(Z|[+-]\d{2}:?\d{2})$/.test(v)) {
+        sinHuso.push(`${campo}="${v}"`);
+      }
+    }
+  }
+
+  const muestra = (xs) => [...new Set(xs)].slice(0, 3).join("\n      ");
+
+  if (rotas.length > 0) {
+    err(
+      `${rotas.length} fecha(s) que no se pueden interpretar`,
+      `      ${muestra(rotas)}\n\n` +
+        "      Se espera ISO 8601: 2026-09-10T20:57:50.553Z\n" +
+        "      Suele pasar al editar la celda a mano o al cambiar el tipo del campo."
+    );
+  } else if (sinHuso.length > 0) {
+    warn(
+      `${sinHuso.length} fecha(s) sin huso horario`,
+      `      ${muestra(sinHuso)}\n\n` +
+        "      Sin Z ni +/-03:00, se interpretan como UTC: el turno aparece\n" +
+        "      corrido y los recordatorios salen a destiempo."
+    );
+  } else {
+    ok(
+      `Fechas correctas en ${registros.length} turno(s)`,
+      "ISO 8601 con huso, se parsean bien"
+    );
+    const ej = registros[0]?.fields?.startsAt;
+    if (ej) {
+      console.log(
+        `      ${c.dim}guardado: ${ej}\n` +
+          `      se lee:   ${new Date(ej).toISOString()}${c.off}`
+      );
+    }
+  }
 }
 
 function terminar() {

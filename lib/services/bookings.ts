@@ -85,7 +85,10 @@ export async function createBooking(
   if (!professional) {
     throw new BookingError("Profesional inexistente", "NOT_FOUND", 404);
   }
-  if (!professional.serviceIds.includes(service.id)) {
+  // Se pregunta por el lado del servicio, que es donde vive la relacion. Con
+  // professional.serviceIds esta validacion rechazaba turnos de profesionales
+  // que el panel SI tenia asignados, porque ese campo no se actualizaba.
+  if (!service.professionalIds.includes(professional.id)) {
     throw new BookingError(
       "Ese profesional no presta el servicio elegido",
       "INVALID"

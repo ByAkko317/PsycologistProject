@@ -19,6 +19,7 @@
     "tunel": "node scripts/usar-tunel.mjs",
     "check:airtable": "node scripts/check-airtable.mjs",
     "check:workflows": "node scripts/check-workflows.mjs",
+    "reparar:servicios": "node scripts/reparar-servicios.mjs",
     "setup:airtable": "node scripts/setup-airtable.mjs"
   },
   "dependencies": {

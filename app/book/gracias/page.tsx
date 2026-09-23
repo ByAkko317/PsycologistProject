@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AppFooter, AppHeader, Page } from "@/components/app-shell";
 import { BrandStyle } from "@/components/brand";
 import { StatusBadge } from "@/components/ui";
+import { confirmPayment } from "@/lib/services/bookings";
 import { db, getBookingDetail } from "@/lib/services/db";
 import { formatMoney } from "@/lib/tenant";
 import { formatBookingDate } from "@/lib/utils/dates";
@@ -13,10 +14,43 @@ export const dynamic = "force-dynamic";
 export default async function GraciasPage({
   searchParams,
 }: {
-  searchParams: { token?: string; pago?: string };
+  searchParams: {
+    token?: string;
+    pago?: string;
+    // Los agrega Mercado Pago al volver por auto_return.
+    payment_id?: string;
+    collection_id?: string;
+    status?: string;
+  };
 }) {
   const token = searchParams.token;
   if (!token) notFound();
+
+  // --- Confirmar el pago al volver ------------------------------------------
+  //
+  // El estado dependia solo del webhook, y el webhook se pierde facil: la URL
+  // del tunel cambia en cada reinicio y la preferencia ya viajo con la
+  // anterior, asi que Mercado Pago notifica a una direccion muerta. El turno
+  // quedaba en "falta el pago" para siempre aunque la plata estuviera
+  // acreditada.
+  //
+  // Volver aca es la otra oportunidad de enterarse. No se confia en lo que
+  // dice la query string --cualquiera puede escribir status=approved--: se usa
+  // solo el id para volver a preguntarle a la API de Mercado Pago, que es
+  // exactamente lo que hace el webhook. confirmPayment es idempotente.
+  const pagoId = [searchParams.payment_id, searchParams.collection_id].find(
+    (v) => v && v !== "null"
+  );
+
+  if (pagoId) {
+    try {
+      const r = await confirmPayment(pagoId);
+      console.info("[gracias] confirmacion al volver de Mercado Pago", r);
+    } catch (error) {
+      // Que falle no debe romper la pantalla: el webhook puede llegar despues.
+      console.error("[gracias] no se pudo confirmar el pago al volver", error);
+    }
+  }
 
   const booking = await db.getBookingByToken(token);
   if (!booking) notFound();

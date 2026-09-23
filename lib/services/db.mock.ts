@@ -322,14 +322,23 @@ export const mockClient: DataClient = {
     return created;
   },
 
+  // serviceIds se deriva de Service.professionalIds, igual que en Airtable:
+  // la relacion vive de un solo lado. Ver el comentario en db.airtable.ts.
   async listProfessionals(tenantId, serviceId) {
     const tenant = requireTenant(tenantId);
-    return store.professionals.filter(
-      (p) =>
-        p.tenantId === tenant.id &&
-        p.active &&
-        (!serviceId || p.serviceIds.includes(serviceId))
-    );
+    const services = store.services.filter((s) => s.tenantId === tenant.id);
+
+    const porProfesional = new Map<string, string[]>();
+    for (const s of services) {
+      for (const pid of s.professionalIds) {
+        porProfesional.set(pid, [...(porProfesional.get(pid) ?? []), s.id]);
+      }
+    }
+
+    return store.professionals
+      .filter((p) => p.tenantId === tenant.id && p.active)
+      .map((p) => ({ ...p, serviceIds: porProfesional.get(p.id) ?? [] }))
+      .filter((p) => !serviceId || p.serviceIds.includes(serviceId));
   },
 
   async getProfessional(tenantId, professionalId) {

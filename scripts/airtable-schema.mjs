@@ -182,3 +182,21 @@ export const ESQUEMA = [
 export function nombreDeTabla(def, env = process.env) {
   return (env[def.envVar] || "").trim() || def.tabla;
 }
+
+/**
+ * Busca la definición de una tabla por su nombre canónico.
+ *
+ * Existe porque los scripts la referenciaban por índice (`ESQUEMA[5]`). Al
+ * agregar la tabla Notes los índices se corrieron, y el diagnóstico pasó a
+ * contar notas creyendo que contaba usuarios: informaba "no hay ningún
+ * usuario cargado" con la base llena. Por nombre eso no puede pasar.
+ */
+export function tablaPorNombre(nombre) {
+  const def = ESQUEMA.find((d) => d.tabla === nombre);
+  if (!def) {
+    throw new Error(
+      `No existe la tabla "${nombre}" en el esquema. Son: ${ESQUEMA.map((d) => d.tabla).join(", ")}`
+    );
+  }
+  return def;
+}

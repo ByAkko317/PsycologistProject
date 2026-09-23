@@ -213,7 +213,9 @@ function toProfessional(r: AirtableRecord): Professional {
     phone: str(f.phone) || undefined,
     avatarUrl: str(f.avatarUrl) || undefined,
     active: bool(f.active, true),
-    serviceIds: toList(f.serviceIds),
+    // Se completa en listProfessionals a partir de Services.professionalIds.
+    // Ver el comentario de esa funcion: la relacion vive de un solo lado.
+    serviceIds: [],
     workingHours: parseHours(f.workingHours),
   };
 }
@@ -387,15 +389,43 @@ export const airtableClient: DataClient = {
     return toService(record);
   },
 
+  /**
+   * Profesionales del negocio, opcionalmente los de un servicio.
+   *
+   * La relacion servicio-profesional se guarda UNICAMENTE en
+   * Services.professionalIds, que es el campo que edita el panel. El campo
+   * Professionals.serviceIds queda como historico: se sigue derivando aca para
+   * que el resto del codigo lo lea igual, pero ya no se consulta.
+   *
+   * Antes estaba guardada de los dos lados y nadie los mantenia en sincronia:
+   * el panel escribia el lado del servicio y la web leia el del profesional,
+   * asi que asignar un profesional no tenia ningun efecto visible. Los datos
+   * del seed funcionaban porque el seed escribia ambos.
+   *
+   * Si alguna vez hace falta volver a dos lados, el "des-asignar" es el caso
+   * que rompe: sacar el profesional de un lado no lo saca del otro.
+   */
   async listProfessionals(tenantId, serviceId) {
     const id = await requireTenantId(tenantId);
-    const professionals = (
-      await listAll(T.professionals, {
-        filterByFormula: eqFormula("tenantId", id),
-      })
-    )
+
+    const [registros, services] = await Promise.all([
+      listAll(T.professionals, { filterByFormula: eqFormula("tenantId", id) }),
+      // Sin activeOnly: un servicio pausado sigue siendo parte de la ficha del
+      // profesional, y el panel necesita verlo para poder reactivarlo.
+      airtableClient.listServices(id),
+    ]);
+
+    const porProfesional = new Map<string, string[]>();
+    for (const s of services) {
+      for (const pid of s.professionalIds) {
+        porProfesional.set(pid, [...(porProfesional.get(pid) ?? []), s.id]);
+      }
+    }
+
+    const professionals = registros
       .map(toProfessional)
-      .filter((p) => p.active);
+      .filter((p) => p.active)
+      .map((p) => ({ ...p, serviceIds: porProfesional.get(p.id) ?? [] }));
 
     return serviceId
       ? professionals.filter((p) => p.serviceIds.includes(serviceId))
