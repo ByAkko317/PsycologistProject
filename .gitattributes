@@ -1,0 +1,40 @@
+# =============================================================================
+# Finales de linea normalizados
+# =============================================================================
+#
+# Sin esto, editar un archivo en Windows lo reescribe con CRLF y git lo ve como
+# si TODAS las lineas hubieran cambiado. Paso con los cinco workflows de n8n:
+# un `git diff --stat` mostraba 566 lineas modificadas en un archivo que nadie
+# habia tocado.
+#
+# El problema no es el ruido en si, es donde se esconde: un cambio real --una
+# credencial que se cuela, un nodo que cambia de destinatario-- queda invisible
+# entre dos mil lineas de diferencias falsas. Es exactamente el tipo de revision
+# que ya se nos escapo una vez en este repo.
+#
+# Si ya tenes el repo clonado, una vez:
+#
+#     git add --renormalize .
+#     git status          # deberia quedar limpio
+
+# Todo texto se guarda con LF en el repositorio, independientemente del sistema.
+* text=auto eol=lf
+
+# Estos se comparan a mano seguido: conviene que nunca cambien de forma sola.
+*.json   text eol=lf
+*.mjs    text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.md     text eol=lf
+*.yml    text eol=lf
+
+# Binarios: que git no intente convertir nada.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.pdf    binary
+*.woff   binary
+*.woff2  binary
