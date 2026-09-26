@@ -58,6 +58,31 @@ const warn = (t, d) => {
   console.log(`  ${c.warn}!${c.off} ${t}${d ? `\n${d}` : ""}`);
 };
 
+/**
+ * Agrupa los tipos de Airtable por como los ve la app.
+ *
+ * La app escribe strings y lee con String(): para ella, un campo "email", uno
+ * "url" y uno "singleLineText" son lo mismo. Comparar el tipo exacto generaba
+ * avisos por diferencias que no afectan nada -- y un aviso que no importa
+ * entrena a ignorar los que si.
+ *
+ * Lo que de verdad cambia el valor es pasar de texto a una familia que
+ * Airtable interpreta: fechas (reformatea y puede perder el huso), numeros
+ * (redondea segun la precision), casillas y listas de opciones (restringen los
+ * valores posibles).
+ */
+function familia(tipo) {
+  const texto = [
+    "singleLineText",
+    "multilineText",
+    "richText",
+    "email",
+    "url",
+    "phoneNumber",
+  ];
+  return texto.includes(tipo) ? "texto" : tipo;
+}
+
 async function at(path) {
   const res = await fetch(`https://api.airtable.com/v0/${path}`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -205,26 +230,29 @@ async function main() {
     const presentes = new Set(tabla.fields.map((f) => f.name));
     const ausentes = def.campos.filter((f) => !presentes.has(f.name));
 
-    // El tipo importa tanto como la presencia. Un campo de fecha convertido a
-    // "Date" en Airtable deja de devolver el ISO exacto que escribio la app:
-    // Airtable lo reinterpreta y puede perder la hora o el huso, y a partir de
-    // ahi los turnos se corren o dejan de parsear.
+    // El tipo importa tanto como la presencia, pero solo cuando cambia de
+    // familia. Un campo de fecha convertido a "Date" en Airtable deja de
+    // devolver el ISO exacto que escribio la app, y ahi los turnos se corren.
+    // Que un email sea "email" en vez de "singleLineText" no cambia nada: los
+    // dos guardan y devuelven la misma cadena.
     const porNombreCampo = new Map(tabla.fields.map((f) => [f.name, f.type]));
     const tipoDistinto = def.campos.filter(
-      (f) => presentes.has(f.name) && porNombreCampo.get(f.name) !== f.type
+      (f) =>
+        presentes.has(f.name) &&
+        familia(porNombreCampo.get(f.name)) !== familia(f.type)
     );
 
     if (tipoDistinto.length > 0) {
       warn(
-        `Tabla "${nombre}": ${tipoDistinto.length} campo(s) con otro tipo`,
+        `Tabla "${nombre}": ${tipoDistinto.length} campo(s) de otro tipo`,
         tipoDistinto
           .map(
             (f) =>
-              `      ${f.name}: es "${porNombreCampo.get(f.name)}" y se espera "${f.type}"`
+              `      ${f.name}: es "${porNombreCampo.get(f.name)}" y la app lo trata como "${f.type}"`
           )
           .join("\n") +
-          "\n\n      La app escribe y lee estos campos como texto plano. Si Airtable\n" +
-          "      los interpreta, puede reformatearlos al guardarlos."
+          "\n\n      Airtable puede reinterpretar el valor al guardarlo, y entonces\n" +
+          "      lo que lee la app no es lo que escribio."
       );
     }
 

@@ -164,7 +164,10 @@ export const ESQUEMA = [
     descripcion:
       "Login de dueño, profesional y paciente. Restringí los permisos de esta tabla.",
     campos: [
-      texto("email"),
+      // Mismo tipo que en Professionals y Clients. Estaba como texto plano por
+      // descuido, y el diagnostico lo reportaba como diferencia en bases donde
+      // el campo se habia creado bien.
+      email("email"),
       texto("tenantId"),
       texto("name"),
       opciones("role", ["owner", "employee", "client"]),

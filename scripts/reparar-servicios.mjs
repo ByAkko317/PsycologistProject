@@ -105,7 +105,42 @@ async function main() {
   console.log(`  ${services.length} servicio(s), ${profs.length} profesional(es)\n`);
 
   if (aAgregar.size === 0) {
-    console.log(`  ${c.ok}✓${c.off} Los dos lados ya coinciden: no hay nada que reparar.\n`);
+    // "Los dos lados coinciden" seria mentira: esta comparacion mira solo una
+    // direccion, la unica que puede perder datos. Si el panel asigno un
+    // profesional a un servicio y el lado viejo del profesional quedo vacio,
+    // aca no hay nada que mover -- y esta bien, porque el lado del servicio ya
+    // es el que manda. Decir que coinciden haria pensar que el otro campo
+    // tambien esta al dia, que es justo la confusion que trajo todo esto.
+    console.log(
+      `  ${c.ok}✓${c.off} No hay asignaciones del lado viejo que mover.\n`
+    );
+
+    // Lo util es ver que tiene el lado que manda: asi se distingue "ya estaba
+    // todo bien" de "no hay ninguna asignacion en ningun lado".
+    const conProfesionales = services.filter(
+      (s) => lista(s.fields?.professionalIds).length > 0
+    );
+
+    console.log(`  ${c.dim}Asignaciones vigentes (Services.professionalIds):${c.off}`);
+    for (const s of services) {
+      const pids = lista(s.fields?.professionalIds);
+      const nombres = pids.map((p) => nombreProf.get(p) ?? `${p} (inexistente)`);
+      const marca = pids.length > 0 ? `${c.ok}·${c.off}` : `${c.warn}·${c.off}`;
+      console.log(
+        `    ${marca} ${s.fields?.name ?? s.id}: ` +
+          (nombres.length > 0
+            ? nombres.join(", ")
+            : `${c.warn}sin profesionales — no se puede reservar${c.off}`)
+      );
+    }
+    console.log("");
+
+    if (conProfesionales.length === 0) {
+      console.log(
+        `  ${c.warn}Ningun servicio tiene profesionales asignados.${c.off}\n` +
+          `  Asignalos desde el panel, en /admin/servicios.\n`
+      );
+    }
   } else {
     for (const [sid, pids] of aAgregar) {
       console.log(
