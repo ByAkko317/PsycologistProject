@@ -105,11 +105,13 @@ export default async function EmployeeAgenda({
           <>
             <div className="mb-4">
               <Buscador
-                placeholder="Buscar un paciente o servicio en toda mi agenda…"
+                placeholder="Buscar paciente o servicio…"
                 ayuda={
                   buscando
                     ? "Buscando en todas las fechas, no solo en este día."
-                    : undefined
+                    : // El placeholder es corto para que entre en mobile; el
+                      // alcance de la búsqueda se aclara acá.
+                      "Busca en toda tu agenda, no solo en este día."
                 }
               />
             </div>
@@ -125,7 +127,7 @@ export default async function EmployeeAgenda({
                 </Link>
 
                 <div className="text-center">
-                  <p className="font-medium capitalize">
+                  <p className="font-medium first-letter:uppercase">
                     {etiquetaDeDia(fecha)}
                   </p>
                   {fecha !== hoyKey && (

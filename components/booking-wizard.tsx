@@ -34,7 +34,7 @@ type Paso = 1 | 2 | 3 | 4;
 const PASOS = [
   { n: 1, titulo: "Servicio" },
   { n: 2, titulo: "Profesional" },
-  { n: 3, titulo: "Dia y hora" },
+  { n: 3, titulo: "Día y hora" },
   { n: 4, titulo: "Tus datos" },
 ] as const;
 
@@ -426,34 +426,73 @@ function Stepper({
   paso: number;
   onVolver: (n: number) => void;
 }) {
+  const actual = PASOS[paso - 1];
   return (
-    <ol className="flex flex-wrap gap-x-2 gap-y-1 text-sm">
-      {PASOS.map((p, i) => {
-        const activo = p.n === paso;
-        const hecho = p.n < paso;
-        return (
-          <li key={p.n} className="flex items-center gap-2">
+    <>
+      {/* Mobile: los cuatro pasos en fila no entran en 375px y se partían en
+          dos renglones. Acá alcanza con saber dónde estás y poder volver. */}
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          {paso > 1 ? (
             <button
-              onClick={() => onVolver(p.n)}
-              disabled={!hecho}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
-                activo
-                  ? "bg-brand font-medium text-brand-fg"
-                  : hecho
-                    ? "text-brand hover:underline"
-                    : "text-fg-subtle"
-              }`}
+              type="button"
+              onClick={() => onVolver(paso - 1)}
+              className="-ml-2 rounded-lg px-2 py-1 text-brand transition hover:bg-surface-2"
             >
-              <span className="text-xs">{p.n}</span>
-              {p.titulo}
+              ← {PASOS[paso - 2].titulo}
             </button>
-            {i < PASOS.length - 1 && (
-              <span className="text-fg-subtle">›</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+          ) : (
+            <span />
+          )}
+          <span className="text-fg-muted">
+            Paso {paso} de {PASOS.length} ·{" "}
+            <span className="font-medium text-fg">{actual.titulo}</span>
+          </span>
+        </div>
+        <div
+          className="mt-2 h-1 overflow-hidden rounded-full bg-line"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={PASOS.length}
+          aria-valuenow={paso}
+          aria-label={`Paso ${paso} de ${PASOS.length}`}
+        >
+          <div
+            className="h-full rounded-full bg-brand transition-all"
+            style={{ width: `${(paso / PASOS.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <ol className="hidden flex-wrap gap-x-2 gap-y-1 text-sm sm:flex">
+        {PASOS.map((p, i) => {
+          const activo = p.n === paso;
+          const hecho = p.n < paso;
+          return (
+            <li key={p.n} className="flex items-center gap-2">
+              <button
+                onClick={() => onVolver(p.n)}
+                disabled={!hecho}
+                aria-current={activo ? "step" : undefined}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
+                  activo
+                    ? "bg-brand font-medium text-brand-fg"
+                    : hecho
+                      ? "text-brand hover:underline"
+                      : "text-fg-subtle"
+                }`}
+              >
+                <span className="text-xs">{p.n}</span>
+                {p.titulo}
+              </button>
+              {i < PASOS.length - 1 && (
+                <span className="text-fg-subtle">›</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 
