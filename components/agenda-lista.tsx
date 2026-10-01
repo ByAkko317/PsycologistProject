@@ -52,9 +52,9 @@ export function AgendaLista({
                 <button
                   key={t.id}
                   onClick={() => setAbierto(t)}
-                  className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 text-left transition hover:bg-surface-2 sm:px-5"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-surface-2 sm:gap-4 sm:px-5"
                 >
-                  <span className="tabular w-14 shrink-0 text-sm font-medium text-fg-muted">
+                  <span className="tabular w-12 shrink-0 self-start pt-0.5 text-sm font-medium text-fg-muted sm:w-14 sm:self-center sm:pt-0">
                     {t.hora}
                   </span>
 
@@ -66,13 +66,15 @@ export function AgendaLista({
                       {t.servicio.nombre}
                       {perms.verImportes && ` · ${t.profesional.nombre}`}
                     </span>
+                    {/* En mobile los estados van abajo: al lado le quitaban
+                        todo el ancho al nombre del paciente. */}
+                    <span className="mt-1.5 flex flex-wrap gap-1.5 sm:hidden">
+                      <Estados turno={t} verImportes={perms.verImportes} />
+                    </span>
                   </span>
 
-                  <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
-                    {perms.verImportes && (
-                      <PaymentBadge status={t.paymentStatus} />
-                    )}
-                    <StatusBadge status={t.status} />
+                  <span className="hidden shrink-0 flex-wrap justify-end gap-1.5 sm:flex">
+                    <Estados turno={t} verImportes={perms.verImportes} />
                   </span>
 
                   <span className="text-fg-subtle" aria-hidden>
@@ -92,6 +94,21 @@ export function AgendaLista({
         moneda={moneda}
         onCerrar={() => setAbierto(null)}
       />
+    </>
+  );
+}
+
+function Estados({
+  turno,
+  verImportes,
+}: {
+  turno: BookingModalData;
+  verImportes: boolean;
+}) {
+  return (
+    <>
+      {verImportes && <PaymentBadge status={turno.paymentStatus} />}
+      <StatusBadge status={turno.status} />
     </>
   );
 }

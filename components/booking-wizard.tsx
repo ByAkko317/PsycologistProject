@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { inputClass } from "@/components/ui";
 import type {
   AvailabilitySlot,
   Professional,
@@ -394,7 +395,7 @@ export function BookingWizard({
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand"
+                className={inputClass}
               />
             </div>
 
@@ -510,7 +511,7 @@ function Campo({
         required={required}
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand"
+        className={inputClass}
       />
       {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
     </div>

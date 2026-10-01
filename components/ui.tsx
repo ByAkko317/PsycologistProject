@@ -226,7 +226,7 @@ export function Stat({
   trend?: number | null;
 }) {
   return (
-    <Card>
+    <Card padding={false} className="p-4 sm:p-5">
       <p className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
         {label}
       </p>

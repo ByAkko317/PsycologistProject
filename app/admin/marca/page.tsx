@@ -1,5 +1,5 @@
 // Identidad del negocio (white-label) + horario laboral + politica de cancelacion.
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, inputClass } from "@/components/ui";
 import { requireTenant } from "@/lib/tenant";
 import { guardarMarca } from "../actions";
 
@@ -85,15 +85,18 @@ export default async function AdminMarca() {
           </SectionTitle>
           <div className="space-y-2">
             {DIAS.map((nombre, dia) => (
-              <div key={dia} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 text-sm text-fg-muted">
+              <div
+                key={dia}
+                className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+              >
+                <span className="shrink-0 text-sm text-fg-muted sm:w-24">
                   {nombre}
                 </span>
                 <input
                   name={`hours_${dia}`}
                   defaultValue={rangosDe(dia)}
                   placeholder="cerrado"
-                  className="flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm outline-none focus:border-brand"
+                  className={`${inputClass} font-mono sm:flex-1`}
                 />
               </div>
             ))}
@@ -155,7 +158,7 @@ function Campo({
         name={name}
         type={type}
         defaultValue={defaultValue}
-        className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand"
+        className={inputClass}
       />
       {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
     </div>

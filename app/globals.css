@@ -112,6 +112,15 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Franjas con scroll horizontal (navegación mobile): se desliza con el
+     dedo, la barra solo ocupa lugar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer components {

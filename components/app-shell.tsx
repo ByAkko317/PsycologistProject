@@ -6,6 +6,7 @@
 // =============================================================================
 
 import Link from "next/link";
+import { NavLinks } from "@/components/nav-links";
 import { ThemeToggle } from "@/components/theme";
 import { UserMenu } from "@/components/user-menu";
 import { getSession } from "@/lib/auth/session";
@@ -103,20 +104,7 @@ export async function AppHeader({
           </span>
         </Link>
 
-        {/* Navegación por rol. En pantallas chicas se va al menú de usuario. */}
-        {items.length > 0 && (
-          <nav className="ml-4 hidden items-center gap-0.5 md:flex">
-            {items.map((i) => (
-              <Link
-                key={i.href}
-                href={i.href}
-                className="rounded-lg px-3 py-1.5 text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
-              >
-                {i.label}
-              </Link>
-            ))}
-          </nav>
-        )}
+        {items.length > 0 && <NavLinks items={items} variante="header" />}
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
@@ -130,13 +118,16 @@ export async function AppHeader({
           ) : (
             <Link
               href="/login"
-              className="rounded-lg border border-line px-3.5 py-1.5 text-sm font-medium text-fg transition hover:bg-surface-2"
+              className="whitespace-nowrap rounded-lg border border-line px-3.5 py-1.5 text-sm font-medium text-fg transition hover:bg-surface-2"
             >
               Iniciar sesión
             </Link>
           )}
         </div>
       </div>
+
+      {/* Con sesión, las secciones también se ven en mobile, sin abrir menús. */}
+      {sesion && items.length > 1 && <NavLinks items={items} variante="franja" />}
     </header>
   );
 }

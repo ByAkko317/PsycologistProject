@@ -13,6 +13,7 @@ import { requirePageSession } from "@/lib/auth/guards";
 import { buscarPacientes } from "@/lib/services/patients";
 import { formatMoney, requireTenant } from "@/lib/tenant";
 import { formatBookingDate } from "@/lib/utils/dates";
+import type { Tenant } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -118,26 +119,21 @@ export default async function PacientesPage({
                       {[client.email, client.phone].filter(Boolean).join(" · ") ||
                         "Sin datos de contacto"}
                     </span>
+                    {/* En mobile el resumen va debajo del nombre: en columna
+                        aparte dejaba el nombre en "Sofia …". */}
+                    <span className="mt-1 block text-sm sm:hidden">
+                      <ResumenPaciente
+                        {...{ turnos, atendidos, ultimoTurno, proximoTurno, cobrado }}
+                        tenant={tenant}
+                      />
+                    </span>
                   </span>
 
-                  <span className="shrink-0 text-right text-sm">
-                    {proximoTurno ? (
-                      <span className="block text-brand">
-                        Próximo:{" "}
-                        {formatBookingDate(proximoTurno, tenant.timezone)}
-                      </span>
-                    ) : ultimoTurno ? (
-                      <span className="block text-fg-muted">
-                        Último: {formatBookingDate(ultimoTurno, tenant.timezone)}
-                      </span>
-                    ) : (
-                      <span className="block text-fg-subtle">Sin turnos</span>
-                    )}
-                    <span className="tabular block text-xs text-fg-subtle">
-                      {turnos} turno{turnos === 1 ? "" : "s"} · {atendidos}{" "}
-                      atendido{atendidos === 1 ? "" : "s"}
-                      {cobrado !== null && ` · ${formatMoney(cobrado, tenant)}`}
-                    </span>
+                  <span className="hidden shrink-0 text-right text-sm sm:block">
+                    <ResumenPaciente
+                      {...{ turnos, atendidos, ultimoTurno, proximoTurno, cobrado }}
+                      tenant={tenant}
+                    />
                   </span>
 
                   <span className="text-fg-subtle" aria-hidden>
@@ -169,6 +165,44 @@ export default async function PacientesPage({
       </Page>
 
       <AppFooter tenant={tenant} />
+    </>
+  );
+}
+
+/** Próximo o último turno y totales. Se dibuja en otra posición según el ancho. */
+function ResumenPaciente({
+  turnos,
+  atendidos,
+  ultimoTurno,
+  proximoTurno,
+  cobrado,
+  tenant,
+}: {
+  turnos: number;
+  atendidos: number;
+  ultimoTurno?: string;
+  proximoTurno?: string;
+  cobrado: number | null;
+  tenant: Tenant;
+}) {
+  return (
+    <>
+      {proximoTurno ? (
+        <span className="block text-brand">
+          Próximo: {formatBookingDate(proximoTurno, tenant.timezone)}
+        </span>
+      ) : ultimoTurno ? (
+        <span className="block text-fg-muted">
+          Último: {formatBookingDate(ultimoTurno, tenant.timezone)}
+        </span>
+      ) : (
+        <span className="block text-fg-subtle">Sin turnos</span>
+      )}
+      <span className="tabular block text-xs text-fg-subtle">
+        {turnos} turno{turnos === 1 ? "" : "s"} · {atendidos} atendido
+        {atendidos === 1 ? "" : "s"}
+        {cobrado !== null && ` · ${formatMoney(cobrado, tenant)}`}
+      </span>
     </>
   );
 }

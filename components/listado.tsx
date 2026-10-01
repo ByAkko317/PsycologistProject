@@ -57,51 +57,55 @@ export function Buscador({
   }, [valor, params, router, construir]);
 
   return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          className="h-4 w-4"
-          aria-hidden
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-      </span>
-
-      <input
-        type="search"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className="w-full rounded-lg border border-line bg-surface py-2.5 pl-9 pr-9 text-sm text-fg placeholder:text-fg-subtle transition focus:border-brand"
-      />
-
-      {valor && (
-        <button
-          type="button"
-          onClick={() => setValor("")}
-          aria-label="Limpiar búsqueda"
-          className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-fg-subtle transition hover:bg-surface-2 hover:text-fg"
-        >
+    <div>
+      {/* El contenedor relativo envuelve solo el input: si incluyera la ayuda
+          de abajo, top-1/2 deja la lupa corrida hacia abajo. */}
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle">
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
             strokeLinecap="round"
-            className="h-3.5 w-3.5"
+            className="h-4 w-4"
             aria-hidden
           >
-            <path d="M18 6 6 18M6 6l12 12" />
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
           </svg>
-        </button>
-      )}
+        </span>
+
+        <input
+          type="search"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="w-full rounded-lg border border-line bg-surface py-2.5 pl-9 pr-9 text-sm text-fg placeholder:text-fg-subtle transition focus:border-brand"
+        />
+
+        {valor && (
+          <button
+            type="button"
+            onClick={() => setValor("")}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-fg-subtle transition hover:bg-surface-2 hover:text-fg"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="h-3.5 w-3.5"
+              aria-hidden
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {(ayuda || pendiente) && (
         <p className="mt-1.5 text-xs text-fg-subtle">
