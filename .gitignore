@@ -60,3 +60,6 @@ n8n/.env.n8n
 INFORME-*.md
 # Mismo origen: parches que genera la revision periodica del repo.
 INFORME-*.patch
+
+# Respaldos de `pnpm limpiar:actividad`: tienen datos de pacientes.
+/backups/
