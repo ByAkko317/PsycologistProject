@@ -277,6 +277,58 @@ export async function confirmPayment(paymentId: string): Promise<{
   return { handled: true, bookingId: booking.id };
 }
 
+/**
+ * Abre un checkout nuevo para un turno que todavia no se pago.
+ *
+ * Se usa cuando Mercado Pago rechazo la tarjeta o la persona volvio sin pagar:
+ * sin esto, la unica salida era reservar otro turno. Crear una preferencia no
+ * cobra nada, asi que repetirlo es inofensivo. Devuelve la URL del checkout.
+ */
+export async function reabrirPago(token: string): Promise<string> {
+  const booking = await db.getBookingByToken(token);
+  if (!booking) throw new BookingError("Turno inexistente", "NOT_FOUND", 404);
+
+  if (booking.paymentStatus === "paid") {
+    throw new BookingError("Este turno ya está pagado.", "INVALID");
+  }
+  if (booking.status !== "pending_payment") {
+    throw new BookingError("Este turno ya no espera un pago.", "INVALID");
+  }
+  if (Date.parse(booking.startsAt) <= Date.now()) {
+    throw new BookingError("El horario del turno ya pasó.", "TOO_LATE");
+  }
+  if (!isPaymentEnabled()) {
+    throw new BookingError("El pago online no está disponible.", "INVALID", 503);
+  }
+
+  const tenant = await db.getTenant(booking.tenantId);
+  const service = tenant && (await db.getService(tenant.id, booking.serviceId));
+  if (!tenant || !service) {
+    throw new BookingError("Turno inexistente", "NOT_FOUND", 404);
+  }
+  const client = await db.getClient(tenant.id, booking.clientId);
+
+  // Sobre el total que quedo guardado al reservar, no el precio de hoy: si el
+  // consultorio cambio el precio despues, el turno no cambia de valor.
+  const monto = calcDeposit(booking.amountTotal, service.depositPercent);
+  if (monto <= 0) {
+    throw new BookingError("Este turno ya no pide seña online.", "INVALID");
+  }
+  const pref = await createPaymentPreference({
+    booking,
+    service,
+    tenant,
+    amount: monto,
+    payerEmail: client?.email,
+    payerName: client?.name,
+  });
+  await db.updateBooking(tenant.id, booking.id, {
+    paymentId: pref.id,
+    paymentStatus: "pending",
+  });
+  return pref.initPoint || pref.sandboxInitPoint;
+}
+
 /** El webhook no sabe de que tenant es el turno: se busca en todos. */
 async function findBookingAnyTenant(bookingId: string): Promise<Booking | null> {
   for (const tenant of await db.listTenants()) {
