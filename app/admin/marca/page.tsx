@@ -1,4 +1,5 @@
 // Identidad del negocio (white-label) + horario laboral + politica de cancelacion.
+import { PhoneInput } from "@/components/phone-input";
 import { Card, SectionTitle, inputClass } from "@/components/ui";
 import { requireTenant } from "@/lib/tenant";
 import { guardarMarca } from "../actions";
@@ -71,10 +72,11 @@ export default async function AdminMarca() {
               name="contactEmail"
               defaultValue={tenant.contactEmail ?? ""}
             />
-            <Campo
+            <PhoneInput
               label="Teléfono de contacto"
               name="contactPhone"
-              defaultValue={tenant.contactPhone ?? ""}
+              defaultValue={tenant.contactPhone}
+              hint="Se manda en los mensajes de WhatsApp. Código de país, área y número."
             />
           </div>
         </Card>

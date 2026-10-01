@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth/passwords";
 import { db } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
+import { validarTelefono } from "@/lib/utils/telefono.mjs";
 import type { SessionPayload } from "@/lib/auth/session";
 import type { User, UserRole } from "@/lib/types";
 
@@ -128,6 +129,9 @@ export async function registerClient(input: {
     throw new AuthFlowError("Ese email no parece válido", "INVALID_INPUT");
   }
 
+  const telefono = validarTelefono(input.phone);
+  if (!telefono.ok) throw new AuthFlowError(telefono.error, "INVALID_INPUT");
+
   const debil = validatePasswordStrength(input.password);
   if (debil) throw new AuthFlowError(debil, "WEAK_PASSWORD");
 
@@ -143,7 +147,7 @@ export async function registerClient(input: {
   const cliente = await db.upsertClient(tenant.id, {
     name,
     email,
-    phone: input.phone?.trim() || undefined,
+    phone: telefono.telefono,
   });
 
   const passwordHash = await hashPassword(input.password);

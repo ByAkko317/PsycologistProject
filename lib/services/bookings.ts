@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/mercadopago";
 import { bookingPayload, emitEvent } from "@/lib/services/n8n";
 import { requireTenant } from "@/lib/tenant";
+import { validarTelefono } from "@/lib/utils/telefono.mjs";
 import type { Booking, BookingDetail, Tenant } from "@/lib/types";
 
 export class BookingError extends Error {
@@ -71,6 +72,12 @@ export async function createBooking(
       "INVALID"
     );
   }
+  // Se normaliza aca y no en el formulario: la API es publica, y un telefono
+  // con espacios o sin codigo de pais rompe el envio por WhatsApp.
+  const telefono = validarTelefono(input.client.phone);
+  if (!telefono.ok) throw new BookingError(telefono.error, "INVALID");
+  input = { ...input, client: { ...input.client, phone: telefono.telefono } };
+
   if (!input.startsAt || Number.isNaN(Date.parse(input.startsAt))) {
     throw new BookingError("Horario invalido", "INVALID");
   }

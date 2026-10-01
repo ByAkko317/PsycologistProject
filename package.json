@@ -20,6 +20,7 @@
     "check:airtable": "node scripts/check-airtable.mjs",
     "check:workflows": "node scripts/check-workflows.mjs",
     "reparar:servicios": "node scripts/reparar-servicios.mjs",
+    "reparar:telefonos": "node scripts/reparar-telefonos.mjs",
     "setup:airtable": "node scripts/setup-airtable.mjs"
   },
   "dependencies": {

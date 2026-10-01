@@ -5,6 +5,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
+import { PhoneInput } from "@/components/phone-input";
 import { accionLogin, accionRegistro, type FormState } from "@/app/login/actions";
 
 const estadoInicial: FormState = {};
@@ -133,12 +134,9 @@ export function RegistroForm() {
         defaultValue={estado.email}
         hint="Si ya reservaste antes con este email, vas a ver todos tus turnos"
       />
-      <Campo
-        label="Teléfono / WhatsApp"
+      <PhoneInput
         name="phone"
-        type="tel"
-        autoComplete="tel"
-        hint="Opcional. Con código de país, ej. +54 9 11…"
+        hint="Opcional. Código de país, área y número, sin 0 ni 15. Ej: 54 9 261 1234567"
       />
       <Campo
         label="Contraseña"

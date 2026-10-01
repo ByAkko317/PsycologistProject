@@ -8,6 +8,7 @@ import { requireActionSession } from "@/lib/auth/guards";
 import { db } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
 import type { WeeklyHours } from "@/lib/types";
+import { validarTelefono } from "@/lib/utils/telefono.mjs";
 
 /** Resultado que leen los formularios de servicios para avisar qué pasó. */
 export type ResultadoServicio =
@@ -157,7 +158,7 @@ export async function guardarMarca(formData: FormData) {
     brandColor: String(formData.get("brandColor") ?? tenant.brandColor).trim(),
     logoUrl: String(formData.get("logoUrl") ?? "").trim(),
     contactEmail: String(formData.get("contactEmail") ?? "").trim(),
-    contactPhone: String(formData.get("contactPhone") ?? "").trim(),
+    contactPhone: contactPhone(formData, tenant.contactPhone),
     cancellationHours: Math.max(
       0,
       Number(formData.get("cancellationHours") ?? 24)
@@ -173,4 +174,14 @@ export async function guardarMarca(formData: FormData) {
   revalidatePath("/admin/marca");
   revalidatePath("/book");
   revalidatePath("/admin");
+}
+
+/**
+ * El campo ya no deja escribir algo invalido. Si igual llega (la action se
+ * puede llamar a mano), se conserva el anterior: es el numero que reciben los
+ * pacientes en cada WhatsApp y no conviene pisarlo con basura.
+ */
+function contactPhone(formData: FormData, anterior?: string): string {
+  const r = validarTelefono(String(formData.get("contactPhone") ?? ""));
+  return r.ok ? (r.telefono ?? "") : (anterior ?? "");
 }

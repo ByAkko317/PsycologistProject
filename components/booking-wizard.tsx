@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneInput } from "@/components/phone-input";
 import { inputClass } from "@/components/ui";
 import type {
   AvailabilitySlot,
@@ -378,14 +379,7 @@ export function BookingWizard({
                 onChange={setEmail}
                 autoComplete="email"
               />
-              <Campo
-                label="Teléfono / WhatsApp"
-                type="tel"
-                value={telefono}
-                onChange={setTelefono}
-                autoComplete="tel"
-                hint="Con código de país, ej. +54 9 11…"
-              />
+              <PhoneInput onCambio={setTelefono} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">
