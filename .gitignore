@@ -58,3 +58,5 @@ n8n/.env.n8n
 # Informes de revision: citan textualmente los valores que se estan sacando del
 # repo, asi que subirlos volveria a publicar justo lo que se quiso limpiar.
 INFORME-*.md
+# Mismo origen: parches que genera la revision periodica del repo.
+INFORME-*.patch
