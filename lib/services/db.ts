@@ -38,6 +38,11 @@ export interface DataClient {
     tenantId: string,
     service: Partial<Service> & { id?: string }
   ): Promise<Service>;
+  /**
+   * Borra el registro. Solo para servicios sin turnos: con turnos se archiva
+   * (ver Service.archived), porque borrarlo deja turnos apuntando a la nada.
+   */
+  deleteService(tenantId: string, serviceId: string): Promise<void>;
 
   listProfessionals(
     tenantId: string,

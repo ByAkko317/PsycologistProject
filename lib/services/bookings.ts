@@ -76,7 +76,11 @@ export async function createBooking(
   }
 
   const service = await db.getService(tenant.id, input.serviceId);
-  if (!service) throw new BookingError("Servicio inexistente", "NOT_FOUND", 404);
+  // Pausado o archivado no se reserva, aunque alguien tenga el id: el portal
+  // ya no lo muestra, pero la API es publica.
+  if (!service || !service.active || service.archived) {
+    throw new BookingError("Servicio inexistente", "NOT_FOUND", 404);
+  }
 
   const professional = await db.getProfessional(
     tenant.id,

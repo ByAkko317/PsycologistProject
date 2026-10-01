@@ -76,6 +76,7 @@ export const ESQUEMA = [
       entero("depositPercent"),
       casilla("active"),
       largo("professionalIds"),
+      casilla("archived"),
     ],
   },
   {

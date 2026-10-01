@@ -47,7 +47,14 @@ export interface Service {
    * 0 = no requiere pago por adelantado.
    */
   depositPercent: number;
+  /** Visible en el portal de reservas. Apagarlo es una pausa, no un borrado. */
   active: boolean;
+  /**
+   * Borrado desde el panel teniendo turnos. No se elimina el registro porque
+   * los turnos lo referencian por id: el historial y los cobros quedarian
+   * sin servicio. Se oculta del panel y del portal, y se puede restaurar.
+   */
+  archived?: boolean;
   /** Profesionales habilitados para este servicio. */
   professionalIds: string[];
 }

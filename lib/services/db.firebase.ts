@@ -34,6 +34,7 @@ export const firebaseClient: DataClient = {
   listServices: async () => pendiente("listServices"),
   getService: async () => pendiente("getService"),
   saveService: async () => pendiente("saveService"),
+  deleteService: async () => pendiente("deleteService"),
   listProfessionals: async () => pendiente("listProfessionals"),
   getProfessional: async () => pendiente("getProfessional"),
   listClients: async () => pendiente("listClients"),

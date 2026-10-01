@@ -68,6 +68,19 @@ function explicarError(status: number, path: string, body: string): string {
   const tabla = decodeURIComponent(path.split("?")[0].split("/")[0] ?? "");
   const crudo = `Airtable ${status} en ${path}: ${body}`;
 
+  // Un campo que el codigo conoce y el Base no: pasa al sumar un campo nuevo
+  // al esquema sobre un Base creado antes (ej. Services.archived).
+  if (body.includes("UNKNOWN_FIELD_NAME")) {
+    return (
+      `${crudo}
+
+` +
+      `  Al Base le falta un campo de la tabla "${tabla}". Se agrega con:
+` +
+      `      pnpm setup:airtable --aplicar`
+    );
+  }
+
   const noEncontrado =
     status === 404 || body.includes("INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND");
   if (!noEncontrado) return crudo;
@@ -199,6 +212,7 @@ function toService(r: AirtableRecord): Service {
     price: num(f.price, 0),
     depositPercent: num(f.depositPercent, 0),
     active: bool(f.active, true),
+    archived: bool(f.archived, false),
     professionalIds: toList(f.professionalIds),
   };
 }
@@ -359,7 +373,9 @@ export const airtableClient: DataClient = {
     const services = (
       await listAll(T.services, { filterByFormula: eqFormula("tenantId", id) })
     ).map(toService);
-    return opts?.activeOnly ? services.filter((s) => s.active) : services;
+    return opts?.activeOnly
+      ? services.filter((s) => s.active && !s.archived)
+      : services;
   },
 
   async getService(tenantId, serviceId) {
@@ -377,6 +393,9 @@ export const airtableClient: DataClient = {
       price: input.price,
       depositPercent: input.depositPercent,
       active: input.active ?? true,
+      // Solo se escribe al archivar o restaurar. Asi un Base al que todavia
+      // no se le agrego el campo sigue pudiendo guardar servicios.
+      archived: input.archived,
       professionalIds: (input.professionalIds ?? []).join(","),
     };
     Object.keys(fields).forEach(
@@ -387,6 +406,16 @@ export const airtableClient: DataClient = {
       ? await updateRecord(T.services, input.id, fields)
       : await createRecord(T.services, fields);
     return toService(record);
+  },
+
+  async deleteService(tenantId, serviceId) {
+    // Se confirma que sea de este tenant antes de borrar: el id solo no
+    // alcanza, y un DELETE en Airtable no tiene vuelta atras.
+    const servicio = await airtableClient.getService(tenantId, serviceId);
+    if (!servicio) throw new Error(`Servicio no encontrado: ${serviceId}`);
+    await request(`${encodeURIComponent(T.services)}/${serviceId}`, {
+      method: "DELETE",
+    });
   },
 
   /**

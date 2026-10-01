@@ -286,7 +286,9 @@ export const mockClient: DataClient = {
   async listServices(tenantId, opts) {
     const tenant = requireTenant(tenantId);
     return store.services.filter(
-      (s) => s.tenantId === tenant.id && (!opts?.activeOnly || s.active)
+      (s) =>
+        s.tenantId === tenant.id &&
+        (!opts?.activeOnly || (s.active && !s.archived))
     );
   },
 
@@ -320,6 +322,15 @@ export const mockClient: DataClient = {
     };
     store.services.push(created);
     return created;
+  },
+
+  async deleteService(tenantId, serviceId) {
+    const tenant = requireTenant(tenantId);
+    const i = store.services.findIndex(
+      (s) => s.id === serviceId && s.tenantId === tenant.id
+    );
+    if (i < 0) throw new Error(`Servicio no encontrado: ${serviceId}`);
+    store.services.splice(i, 1);
   },
 
   // serviceIds se deriva de Service.professionalIds, igual que en Airtable:

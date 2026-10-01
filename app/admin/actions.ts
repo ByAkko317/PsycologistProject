@@ -9,13 +9,34 @@ import { db } from "@/lib/services/db";
 import { requireTenant } from "@/lib/tenant";
 import type { WeeklyHours } from "@/lib/types";
 
-export async function guardarServicio(formData: FormData) {
+/** Resultado que leen los formularios de servicios para avisar qué pasó. */
+export type ResultadoServicio =
+  | { ok: true; mensaje: string }
+  | { ok: false; error: string };
+
+export async function guardarServicio(
+  formData: FormData
+): Promise<ResultadoServicio> {
   // Una server action es un endpoint POST publico: sin esto, cualquiera que
   // conozca su id puede cambiar precios sin pasar por el panel.
   requireActionSession(["owner"]);
   const tenant = await requireTenant();
 
   const id = String(formData.get("id") ?? "") || undefined;
+  const name = String(formData.get("name") ?? "").trim();
+  const durationMinutes = Number(formData.get("durationMinutes") ?? 30);
+  const price = Number(formData.get("price") ?? 0);
+
+  // El input del navegador ya lo pide, pero la action se puede llamar sin
+  // pasar por el formulario.
+  if (!name) return { ok: false, error: "El servicio necesita un nombre." };
+  if (!Number.isFinite(durationMinutes) || durationMinutes < 5) {
+    return { ok: false, error: "La duración mínima es de 5 minutos." };
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return { ok: false, error: "El precio no puede ser negativo." };
+  }
+
   const professionalIds = formData
     .getAll("professionalIds")
     .map(String)
@@ -23,10 +44,10 @@ export async function guardarServicio(formData: FormData) {
 
   await db.saveService(tenant.id, {
     id,
-    name: String(formData.get("name") ?? "").trim(),
+    name,
     description: String(formData.get("description") ?? "").trim(),
-    durationMinutes: Number(formData.get("durationMinutes") ?? 30),
-    price: Number(formData.get("price") ?? 0),
+    durationMinutes: Math.round(durationMinutes),
+    price,
     depositPercent: Math.max(
       0,
       Math.min(100, Number(formData.get("depositPercent") ?? 0))
@@ -37,6 +58,72 @@ export async function guardarServicio(formData: FormData) {
 
   revalidatePath("/admin/servicios");
   revalidatePath("/book");
+  return { ok: true, mensaje: id ? "Cambios guardados." : "Servicio creado." };
+}
+
+/**
+ * Quita un servicio del panel.
+ *
+ * Sin turnos se borra de verdad. Con turnos se archiva: los turnos guardan el
+ * id del servicio, y borrarlo dejaria el historial, la agenda y los cobros
+ * mostrando un servicio que no existe. Archivado desaparece igual del panel y
+ * del portal, que es lo que se pide al borrar.
+ */
+export async function eliminarServicio(id: string): Promise<ResultadoServicio> {
+  requireActionSession(["owner"]);
+  const tenant = await requireTenant();
+
+  const servicio = await db.getService(tenant.id, id);
+  if (!servicio) return { ok: false, error: "Ese servicio ya no existe." };
+
+  const turnos = (await db.listBookings(tenant.id)).filter(
+    (b) => b.serviceId === id
+  ).length;
+
+  if (turnos === 0) {
+    await db.deleteService(tenant.id, id);
+  } else {
+    // Se manda el servicio completo: saveService escribe todos los campos, y
+    // con un objeto parcial borraria la descripcion y los profesionales.
+    await db.saveService(tenant.id, {
+      ...servicio,
+      active: false,
+      archived: true,
+    });
+  }
+
+  revalidatePath("/admin/servicios");
+  revalidatePath("/book");
+  return {
+    ok: true,
+    mensaje:
+      turnos === 0
+        ? `"${servicio.name}" se eliminó.`
+        : `"${servicio.name}" se archivó: tiene ${turnos} turno${turnos === 1 ? "" : "s"} en el historial.`,
+  };
+}
+
+/** Devuelve un archivado al panel. Vuelve oculto: publicarlo es otra decisión. */
+export async function restaurarServicio(
+  id: string
+): Promise<ResultadoServicio> {
+  requireActionSession(["owner"]);
+  const tenant = await requireTenant();
+
+  const servicio = await db.getService(tenant.id, id);
+  if (!servicio) return { ok: false, error: "Ese servicio ya no existe." };
+
+  await db.saveService(tenant.id, {
+    ...servicio,
+    active: false,
+    archived: false,
+  });
+
+  revalidatePath("/admin/servicios");
+  return {
+    ok: true,
+    mensaje: `"${servicio.name}" volvió al panel, oculto en el portal hasta que lo actives.`,
+  };
 }
 
 export async function guardarMarca(formData: FormData) {
